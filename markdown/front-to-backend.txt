@@ -1,0 +1,1129 @@
+校级活动场地与物资管理系统 - 后端接口文档
+
+========================================
+
+项目概述
+----------------------------------------
+项目名称：校级活动场地与物资管理系统
+后端框架：Flask + Flask-RESTful + Flask-SQLAlchemy
+数据库：MySQL (暂缓实现)
+认证方式：JWT Token
+接口风格：RESTful API
+
+========================================
+
+认证机制
+----------------------------------------
+
+JWT Token 规范
+{
+  "userId": 1,
+  "username": "admin",
+  "role": "admin",
+  "iat": 1640995200,
+  "exp": 1641081600
+}
+
+请求头格式
+Authorization: Bearer <token>
+Content-Type: application/json
+
+统一响应格式
+{
+  "code": 200,
+  "message": "success",
+  "data": {}
+}
+
+========================================
+
+Flask 项目结构要求
+----------------------------------------
+
+app/
+├── __init__.py              # Flask应用初始化
+├── config.py                # 配置文件
+├── models/                  # 数据模型
+│   ├── __init__.py
+│   ├── user.py             # 用户模型
+│   ├── venue.py            # 场地模型
+│   ├── material.py         # 物资模型
+│   └── application.py      # 申请模型
+├── api/                     # API蓝图
+│   ├── __init__.py
+│   ├── auth.py             # 认证相关API
+│   ├── venues.py           # 场地管理API
+│   ├── materials.py        # 物资管理API
+│   ├── applications.py     # 申请管理API
+│   ├── approvals.py        # 审批管理API
+│   └── dashboard.py        # 统计数据API
+├── utils/                   # 工具函数
+│   ├── __init__.py
+│   ├── auth.py             # JWT工具函数
+│   └── response.py         # 统一响应格式
+└── run.py                   # 应用启动文件
+
+========================================
+
+认证模块 API
+----------------------------------------
+
+1. 用户登录
+接口地址: POST /api/auth/login
+
+请求参数:
+{
+  "username": "string",
+  "password": "string"
+}
+
+返回数据:
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": 1,
+      "username": "admin",
+      "realName": "管理员",
+      "role": "admin",
+      "email": "admin@example.com"
+    }
+  }
+}
+
+业务逻辑:
+- 验证用户名密码
+- 生成JWT Token
+- 返回用户信息和Token
+- Mock数据: admin→admin, reviewer→reviewer, 其他→user
+
+2. 获取当前用户信息
+接口地址: GET /api/auth/profile
+请求头: Authorization: Bearer <token>
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "admin",
+    "realName": "管理员",
+    "email": "admin@example.com",
+    "role": "admin"
+  }
+}
+
+3. 用户登出
+接口地址: POST /api/auth/logout
+请求头: Authorization: Bearer <token>
+
+返回数据:
+{
+  "code": 200,
+  "message": "登出成功",
+  "data": null
+}
+
+========================================
+
+场地管理 API
+----------------------------------------
+
+1. 获取场地列表
+接口地址: GET /api/venues
+
+查询参数:
+- page: 页码 (默认1)
+- size: 每页数量 (默认10)
+- status: 场地状态筛选 (available/maintenance)
+- search: 搜索关键词
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "大学生活动中心",
+        "location": "A栋101",
+        "capacity": 200,
+        "description": "大型活动场所",
+        "equipment": ["投影仪", "音响", "麦克风"],
+        "status": "available",
+        "createdAt": "2024-01-01T00:00:00Z"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "size": 10
+  }
+}
+
+Mock数据要求:
+venues = [
+    {
+        "id": 1,
+        "name": "大学生活动中心",
+        "location": "A栋101",
+        "capacity": 200,
+        "description": "大型活动场所，配备专业音响和投影设备",
+        "equipment": ["投影仪", "音响设备", "麦克风", "空调"],
+        "status": "available"
+    },
+    {
+        "id": 2,
+        "name": "体育馆",
+        "location": "B栋201",
+        "capacity": 500,
+        "description": "室内体育活动场所",
+        "equipment": ["篮球架", "音响设备", "计分器"],
+        "status": "available"
+    },
+    {
+        "id": 3,
+        "name": "图书馆报告厅",
+        "location": "C栋301",
+        "capacity": 150,
+        "description": "学术报告和讲座场所",
+        "equipment": ["投影仪", "讲台", "麦克风", "空调"],
+        "status": "maintenance"
+    },
+    {
+        "id": 4,
+        "name": "学生活动室",
+        "location": "D栋101",
+        "capacity": 50,
+        "description": "小型社团活动场所",
+        "equipment": ["桌子", "椅子", "白板"],
+        "status": "available"
+    }
+]
+
+2. 创建场地
+接口地址: POST /api/venues
+权限要求: admin
+
+请求参数:
+{
+  "name": "string",
+  "location": "string",
+  "capacity": 100,
+  "description": "string",
+  "equipment": ["设备1", "设备2"]
+}
+
+返回数据:
+{
+  "code": 200,
+  "message": "场地创建成功",
+  "data": {
+    "id": 5,
+    "name": "新场地",
+    "location": "E栋101",
+    "capacity": 100,
+    "description": "新创建的场地",
+    "equipment": ["设备1", "设备2"],
+    "status": "available",
+    "createdAt": "2024-01-01T00:00:00Z"
+  }
+}
+
+3. 更新场地
+接口地址: PUT /api/venues/<int:venue_id>
+权限要求: admin
+请求参数: 同创建场地
+
+返回数据:
+{
+  "code": 200,
+  "message": "场地更新成功",
+  "data": {
+    "id": 1,
+    "name": "更新后的场地名称",
+    "location": "A栋101",
+    "capacity": 200,
+    "description": "更新后的描述",
+    "equipment": ["投影仪", "音响"],
+    "status": "available",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  }
+}
+
+4. 删除场地
+接口地址: DELETE /api/venues/<int:venue_id>
+权限要求: admin
+
+返回数据:
+{
+  "code": 200,
+  "message": "场地删除成功",
+  "data": null
+}
+
+5. 获取可用场地 (根据时间)
+接口地址: GET /api/venues/available
+查询参数:
+- startTime: 开始时间 (ISO 8601格式)
+- endTime: 结束时间 (ISO 8601格式)
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "name": "大学生活动中心",
+      "location": "A栋101",
+      "capacity": 200,
+      "status": "available"
+    }
+  ]
+}
+
+========================================
+
+物资管理 API
+----------------------------------------
+
+1. 获取物资列表
+接口地址: GET /api/materials
+
+查询参数:
+- page: 页码 (默认1)
+- size: 每页数量 (默认10)
+- category: 物资分类筛选
+- status: 物资状态筛选 (available/unavailable)
+- search: 搜索关键词
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "投影仪",
+        "category": "电子设备",
+        "totalQuantity": 10,
+        "availableQuantity": 8,
+        "unit": "台",
+        "description": "高清投影仪，支持HDMI输入",
+        "status": "available",
+        "createdAt": "2024-01-01T00:00:00Z"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "size": 10
+  }
+}
+
+Mock数据要求:
+materials = [
+    {
+        "id": 1,
+        "name": "投影仪",
+        "category": "电子设备",
+        "totalQuantity": 10,
+        "availableQuantity": 8,
+        "unit": "台",
+        "description": "高清投影仪，支持HDMI和VGA输入",
+        "status": "available"
+    },
+    {
+        "id": 2,
+        "name": "折叠椅",
+        "category": "家具",
+        "totalQuantity": 100,
+        "availableQuantity": 95,
+        "unit": "把",
+        "description": "可折叠塑料椅",
+        "status": "available"
+    },
+    {
+        "id": 3,
+        "name": "麦克风",
+        "category": "电子设备",
+        "totalQuantity": 5,
+        "availableQuantity": 3,
+        "unit": "个",
+        "description": "无线手持麦克风",
+        "status": "available"
+    },
+    {
+        "id": 4,
+        "name": "折叠桌",
+        "category": "家具",
+        "totalQuantity": 20,
+        "availableQuantity": 18,
+        "unit": "张",
+        "description": "可折叠会议桌",
+        "status": "available"
+    },
+    {
+        "id": 5,
+        "name": "音响设备",
+        "category": "电子设备",
+        "totalQuantity": 3,
+        "availableQuantity": 2,
+        "unit": "套",
+        "description": "专业音响系统",
+        "status": "available"
+    },
+    {
+        "id": 6,
+        "name": "白板",
+        "category": "办公用品",
+        "totalQuantity": 15,
+        "availableQuantity": 15,
+        "unit": "块",
+        "description": "移动式白板",
+        "status": "available"
+    }
+]
+
+2. 创建物资
+接口地址: POST /api/materials
+权限要求: admin
+
+请求参数:
+{
+  "name": "string",
+  "category": "string",
+  "totalQuantity": 10,
+  "unit": "string",
+  "description": "string"
+}
+
+返回数据:
+{
+  "code": 200,
+  "message": "物资创建成功",
+  "data": {
+    "id": 7,
+    "name": "新物资",
+    "category": "电子设备",
+    "totalQuantity": 10,
+    "availableQuantity": 10,
+    "unit": "台",
+    "description": "新创建的物资",
+    "status": "available",
+    "createdAt": "2024-01-01T00:00:00Z"
+  }
+}
+
+3. 更新物资
+接口地址: PUT /api/materials/<int:material_id>
+权限要求: admin
+请求参数: 同创建物资
+
+返回数据:
+{
+  "code": 200,
+  "message": "物资更新成功",
+  "data": {
+    "id": 1,
+    "name": "更新后的物资名称",
+    "category": "电子设备",
+    "totalQuantity": 15,
+    "availableQuantity": 13,
+    "unit": "台",
+    "description": "更新后的描述",
+    "status": "available",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  }
+}
+
+4. 删除物资
+接口地址: DELETE /api/materials/<int:material_id>
+权限要求: admin
+
+返回数据:
+{
+  "code": 200,
+  "message": "物资删除成功",
+  "data": null
+}
+
+========================================
+
+申请管理 API
+----------------------------------------
+
+1. 创建申请
+接口地址: POST /api/applications
+权限要求: user, admin, reviewer
+
+请求参数:
+{
+  "activityName": "string",
+  "activityDescription": "string",
+  "venueId": 1,
+  "startTime": "2024-01-01T14:00:00Z",
+  "endTime": "2024-01-01T16:00:00Z",
+  "materials": [
+    {
+      "materialId": 1,
+      "quantity": 2
+    },
+    {
+      "materialId": 2,
+      "quantity": 10
+    }
+  ]
+}
+
+返回数据:
+{
+  "code": 200,
+  "message": "申请提交成功",
+  "data": {
+    "id": 1,
+    "activityName": "社团招新活动",
+    "status": "pending",
+    "createdAt": "2024-01-01T14:00:00Z"
+  }
+}
+
+业务逻辑:
+- 验证场地在指定时间段是否可用
+- 验证物资库存是否充足
+- 减少对应物资的可用数量
+- 创建申请记录和物资使用记录
+
+2. 获取我的申请列表
+接口地址: GET /api/applications/my
+权限要求: user, admin, reviewer
+
+查询参数:
+- page: 页码 (默认1)
+- size: 每页数量 (默认10)
+- status: 状态筛选 (pending/approved/rejected/cancelled)
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "activityName": "社团招新活动",
+        "activityDescription": "春季学期社团招新活动",
+        "venueName": "大学生活动中心",
+        "venueLocation": "A栋101",
+        "startTime": "2024-01-01T14:00:00Z",
+        "endTime": "2024-01-01T16:00:00Z",
+        "status": "pending",
+        "materials": [
+          {
+            "materialId": 1,
+            "materialName": "投影仪",
+            "quantity": 1,
+            "unit": "台"
+          },
+          {
+            "materialId": 2,
+            "materialName": "折叠椅",
+            "quantity": 10,
+            "unit": "把"
+          }
+        ],
+        "rejectionReason": null,
+        "createdAt": "2024-01-01T00:00:00Z",
+        "reviewedAt": null
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "size": 10
+  }
+}
+
+3. 获取申请详情
+接口地址: GET /api/applications/<int:application_id>
+权限要求: 申请人、admin、reviewer
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "activityName": "社团招新活动",
+    "activityDescription": "春季学期社团招新活动",
+    "venue": {
+      "id": 1,
+      "name": "大学生活动中心",
+      "location": "A栋101",
+      "capacity": 200
+    },
+    "startTime": "2024-01-01T14:00:00Z",
+    "endTime": "2024-01-01T16:00:00Z",
+    "status": "pending",
+    "applicant": {
+      "id": 2,
+      "username": "user1",
+      "realName": "张三"
+    },
+    "materials": [
+      {
+        "materialId": 1,
+        "materialName": "投影仪",
+        "quantity": 1,
+        "unit": "台"
+      }
+    ],
+    "rejectionReason": null,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "reviewedAt": null
+  }
+}
+
+4. 取消申请
+接口地址: PUT /api/applications/<int:application_id>/cancel
+权限要求: 申请人、admin
+
+返回数据:
+{
+  "code": 200,
+  "message": "申请已取消",
+  "data": {
+    "id": 1,
+    "status": "cancelled",
+    "updatedAt": "2024-01-01T15:00:00Z"
+  }
+}
+
+业务逻辑:
+- 只有pending或approved状态的申请可以取消
+- 取消申请时，归还对应的物资库存
+- 更新申请状态为cancelled
+
+========================================
+
+审批管理 API
+----------------------------------------
+
+1. 获取待审批列表
+接口地址: GET /api/approvals/pending
+权限要求: reviewer, admin
+
+查询参数:
+- page: 页码 (默认1)
+- size: 每页数量 (默认10)
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "activityName": "社团招新活动",
+        "activityDescription": "春季学期社团招新活动",
+        "applicantName": "张三",
+        "applicantUsername": "user1",
+        "venueName": "大学生活动中心",
+        "venueLocation": "A栋101",
+        "venueCapacity": 200,
+        "startTime": "2024-01-01T14:00:00Z",
+        "endTime": "2024-01-01T16:00:00Z",
+        "materials": [
+          {
+            "materialId": 1,
+            "materialName": "投影仪",
+            "requestedQuantity": 1,
+            "availableQuantity": 8,
+            "totalQuantity": 10,
+            "unit": "台",
+            "stockStatus": "sufficient"
+          },
+          {
+            "materialId": 2,
+            "materialName": "折叠椅",
+            "requestedQuantity": 20,
+            "availableQuantity": 95,
+            "totalQuantity": 100,
+            "unit": "把",
+            "stockStatus": "sufficient"
+          }
+        ],
+        "createdAt": "2024-01-01T00:00:00Z"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "size": 10
+  }
+}
+
+stockStatus枚举:
+- sufficient: 库存充足
+- low: 库存紧张
+- insufficient: 库存不足
+
+2. 审批申请 - 通过
+接口地址: PUT /api/applications/<int:application_id>/approve
+权限要求: reviewer, admin
+
+返回数据:
+{
+  "code": 200,
+  "message": "申请已通过",
+  "data": {
+    "id": 1,
+    "status": "approved",
+    "reviewerId": 3,
+    "reviewedAt": "2024-01-01T15:00:00Z"
+  }
+}
+
+3. 审批申请 - 驳回
+接口地址: PUT /api/applications/<int:application_id>/reject
+权限要求: reviewer, admin
+
+请求参数:
+{
+  "reason": "string"  // 驳回理由 (必填)
+}
+
+返回数据:
+{
+  "code": 200,
+  "message": "申请已驳回",
+  "data": {
+    "id": 1,
+    "status": "rejected",
+    "rejectionReason": "时间冲突",
+    "reviewerId": 3,
+    "reviewedAt": "2024-01-01T15:00:00Z"
+  }
+}
+
+业务逻辑:
+- 驳回申请时，归还对应的物资库存
+- 更新申请状态为rejected
+- 记录驳回理由和审批人
+
+========================================
+
+统计分析 API
+----------------------------------------
+
+1. 获取首页统计数据
+接口地址: GET /api/dashboard/stats
+权限要求: 所有角色
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "totalVenues": 4,
+    "totalMaterials": 6,
+    "pendingApplications": 5,
+    "todayApplications": 3,
+    "venueUtilization": 0.75,
+    "materialUtilization": 0.60,
+    "myApplications": {
+      "total": 10,
+      "pending": 2,
+      "approved": 6,
+      "rejected": 1,
+      "cancelled": 1
+    }
+  }
+}
+
+2. 获取使用趋势数据
+接口地址: GET /api/dashboard/trends
+权限要求: admin
+
+查询参数:
+- type: 统计类型 (weekly/monthly)
+- startDate: 开始日期
+- endDate: 结束日期
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "venueUsage": [
+      {
+        "date": "2024-01-01",
+        "count": 5
+      },
+      {
+        "date": "2024-01-02",
+        "count": 8
+      }
+    ],
+    "materialUsage": [
+      {
+        "date": "2024-01-01",
+        "count": 15
+      }
+    ],
+    "applicationTrends": [
+      {
+        "date": "2024-01-01",
+        "pending": 2,
+        "approved": 5,
+        "rejected": 1
+      }
+    ]
+  }
+}
+
+========================================
+
+AI 功能 API (扩展功能)
+----------------------------------------
+
+1. 智能申请建议
+接口地址: POST /api/ai/suggest-materials
+权限要求: user, admin, reviewer
+
+请求参数:
+{
+  "activityType": "社团招新",
+  "expectedPeople": 100,
+  "venueType": "室内",
+  "description": "新生招新活动"
+}
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "suggestions": [
+      {
+        "materialName": "折叠桌",
+        "recommendedQuantity": 3,
+        "reason": "用于报名登记和资料展示"
+      },
+      {
+        "materialName": "折叠椅",
+        "recommendedQuantity": 15,
+        "reason": "供工作人员和等待学生使用"
+      }
+    ],
+    "activityDescriptionOptimized": "建议的活动描述优化版本...",
+    "estimatedDuration": "2-3小时",
+    "tips": ["建议提前1小时到场布置", "准备充足的报名表格"]
+  }
+}
+
+2. 智能审批建议
+接口地址: POST /api/ai/approval-suggestion
+权限要求: reviewer, admin
+
+请求参数:
+{
+  "applicationId": 1
+}
+
+返回数据:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "suggestion": "approve",
+    "confidence": 0.85,
+    "reason": "申请合理，场地和物资充足",
+    "risks": [
+      "可能与XX活动时间冲突",
+      "物资使用量较大"
+    ],
+    "replyTemplate": "经审核，您的申请已通过。请注意合理使用设备和物资。",
+    "alternativeSuggestions": [
+      "如时间冲突，建议调整到下周同一时间",
+      "如物资不足，建议减少投影仪使用数量"
+    ]
+  }
+}
+
+========================================
+
+Flask 开发环境配置
+----------------------------------------
+
+依赖包要求
+Flask==2.3.3
+Flask-RESTful==0.3.10
+Flask-SQLAlchemy==3.0.5
+Flask-JWT-Extended==4.5.3
+Flask-CORS==4.0.0
+PyJWT==2.8.0
+python-dotenv==1.0.0
+requests==2.31.0
+
+环境变量配置
+FLASK_APP=run.py
+FLASK_ENV=development
+DEBUG=True
+
+JWT_SECRET_KEY=your_secret_key_here
+JWT_ACCESS_TOKEN_EXPIRES=24
+
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+AI配置 (可选)
+DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+项目启动
+# run.py
+from app import create_app
+
+app = create_app()
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+========================================
+
+Mock 数据要求
+----------------------------------------
+
+用户数据
+users = [
+    {
+        "id": 1,
+        "username": "admin",
+        "password": "hashed_password",
+        "realName": "系统管理员",
+        "role": "admin",
+        "email": "admin@example.com",
+        "status": "active"
+    },
+    {
+        "id": 2,
+        "username": "reviewer",
+        "password": "hashed_password",
+        "realName": "审核员",
+        "role": "reviewer",
+        "email": "reviewer@example.com",
+        "status": "active"
+    },
+    {
+        "id": 3,
+        "username": "user1",
+        "password": "hashed_password",
+        "realName": "张三",
+        "role": "user",
+        "email": "zhangsan@example.com",
+        "status": "active"
+    }
+]
+
+申请数据
+applications = [
+    {
+        "id": 1,
+        "userId": 3,
+        "activityName": "社团招新活动",
+        "activityDescription": "春季学期社团招新活动，预计吸引新生200人",
+        "venueId": 1,
+        "startTime": "2024-01-15T14:00:00Z",
+        "endTime": "2024-01-15T17:00:00Z",
+        "status": "pending",
+        "materials": [
+            {"materialId": 1, "quantity": 1},
+            {"materialId": 2, "quantity": 20}
+        ],
+        "createdAt": "2024-01-10T10:00:00Z"
+    },
+    {
+        "id": 2,
+        "userId": 3,
+        "activityName": "学术讲座",
+        "activityDescription": "邀请专家学者进行学术分享",
+        "venueId": 3,
+        "startTime": "2024-01-20T19:00:00Z",
+        "endTime": "2024-01-20T21:00:00Z",
+        "status": "approved",
+        "materials": [
+            {"materialId": 1, "quantity": 1},
+            {"materialId": 3, "quantity": 2}
+        ],
+        "reviewerId": 2,
+        "reviewedAt": "2024-01-12T15:30:00Z",
+        "createdAt": "2024-01-11T09:00:00Z"
+    }
+]
+
+========================================
+
+权限控制矩阵
+----------------------------------------
+
+接口路径                     | admin | reviewer | user
+---------------------------|-------|----------|------
+POST /api/auth/login        |   ✓   |    ✓     |  ✓
+GET /api/auth/profile       |   ✓   |    ✓     |  ✓
+POST /api/auth/logout       |   ✓   |    ✓     |  ✓
+GET /api/venues             |   ✓   |    ✓     |  ✓
+POST /api/venues            |   ✓   |    ✗     |  ✗
+PUT /api/venues/:id         |   ✓   |    ✗     |  ✗
+DELETE /api/venues/:id      |   ✓   |    ✗     |  ✗
+GET /api/materials          |   ✓   |    ✓     |  ✓
+POST /api/materials         |   ✓   |    ✗     |  ✗
+PUT /api/materials/:id      |   ✓   |    ✗     |  ✗
+DELETE /api/materials/:id   |   ✓   |    ✗     |  ✗
+POST /api/applications      |   ✓   |    ✓     |  ✓
+GET /api/applications/my    |   ✓   |    ✓     |  ✓
+PUT /api/applications/:id/cancel | ✓ |    ✗     |  ✓(本人)
+GET /api/approvals/pending  |   ✓   |    ✓     |  ✗
+PUT /api/applications/:id/approve | ✓ |    ✓     |  ✗
+PUT /api/applications/:id/reject  | ✓ |    ✓     |  ✗
+GET /api/dashboard/stats    |   ✓   |    ✓     |  ✓
+GET /api/dashboard/trends   |   ✓   |    ✗     |  ✗
+
+========================================
+
+重要业务规则
+----------------------------------------
+
+申请规则
+1. 同一场地同一时间不能有多个approved状态的申请
+2. 物资申请数量不能超过当前可用数量
+3. 申请时间不能是过去时间
+4. 结束时间必须大于开始时间
+5. 只有pending或approved状态的申请可以取消
+
+审批规则
+1. 只有pending状态的申请可以审批
+2. 驳回申请必须填写理由
+3. 审批通过后，物资库存会被占用
+4. 审批驳回后，物资库存会释放
+
+库存规则
+1. 物资总数量 >= 已占用数量 + 可用数量
+2. 申请通过时，减少可用数量
+3. 申请取消或驳回时，增加可用数量
+4. 管理员可以手动调整物资总数量
+
+========================================
+
+开发指南
+----------------------------------------
+
+1. 项目初始化
+# 创建虚拟环境
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动项目
+python run.py
+
+2. 代码结构示例
+# app/__init__.py
+from flask import Flask
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object('config.Config')
+
+    # 初始化扩展
+    CORS(app)
+    jwt = JWTManager(app)
+
+    # 注册蓝图
+    from app.api import auth_bp, venues_bp, materials_bp, applications_bp, approvals_bp, dashboard_bp
+
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(venues_bp, url_prefix='/api/venues')
+    app.register_blueprint(materials_bp, url_prefix='/api/materials')
+    app.register_blueprint(applications_bp, url_prefix='/api/applications')
+    app.register_blueprint(approvals_bp, url_prefix='/api/approvals')
+    app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
+
+    return app
+
+3. 错误处理
+# utils/response.py
+from flask import jsonify
+
+def success_response(data=None, message="success"):
+    return jsonify({
+        "code": 200,
+        "message": message,
+        "data": data
+    })
+
+def error_response(code, message, data=None):
+    return jsonify({
+        "code": code,
+        "message": message,
+        "data": data
+    }), 400 if code < 500 else 500
+
+========================================
+
+开发计划
+----------------------------------------
+
+第一周：基础框架搭建
+- [ ] Flask项目初始化和配置
+- [ ] 用户认证系统 (JWT)
+- [ ] 基础API结构搭建
+- [ ] Mock数据准备
+
+第二周：核心功能开发
+- [ ] 场地管理API (CRUD)
+- [ ] 物资管理API (CRUD)
+- [ ] 申请管理API
+- [ ] 权限控制实现
+
+第三周：审批和统计功能
+- [ ] 审批管理API
+- [ ] 统计分析API
+- [ ] 业务规则验证
+- [ ] 接口测试
+
+第四周：AI功能集成 (可选)
+- [ ] DeepSeek API集成
+- [ ] 智能推荐功能
+- [ ] 系统优化
+- [ ] 文档完善
+
+========================================
+
+联系方式
+----------------------------------------
+
+后端负责人：[姓名]
+联系方式：[邮箱/电话]
+前端对接人：[姓名]
+项目群组：[钉钉/微信群]
+
+文档更新日期：2024-01-20
+版本号：v1.0.0
+
+========================================
+
+注意
+----------------------------------------
+
+1. 所有接口都请严格按照此文档实现
+2. 数据验证和错误处理要完善
+3. 请使用Mock数据进行开发测试
+4. 遇到问题及时沟通，不要擅自修改接口设计
