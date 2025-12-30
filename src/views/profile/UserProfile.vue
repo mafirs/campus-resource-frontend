@@ -18,18 +18,23 @@
 
           <el-descriptions :column="1" border style="margin-top: 20px">
             <el-descriptions-item label="用户名">
-              {{ userStore.userInfo.username }}
+              {{ userInfo.username || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="姓名">
+              {{ userInfo.realName || '未设置' }}
             </el-descriptions-item>
             <el-descriptions-item label="角色">
               <el-tag :type="getRoleTagType()">
                 {{ getRoleText() }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="所属部门">
-              {{ userInfo.department || '未设置' }}
+            <el-descriptions-item label="邮箱">
+              {{ userInfo.email || '未设置' }}
             </el-descriptions-item>
-            <el-descriptions-item label="联系电话">
-              {{ userInfo.phone || '未设置' }}
+            <el-descriptions-item label="账号状态">
+              <el-tag :type="userInfo.status === 'active' ? 'success' : 'danger'">
+                {{ userInfo.status === 'active' ? '正常' : '已禁用' }}
+              </el-tag>
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
@@ -120,18 +125,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
-import { userList } from '@/mock/data.js'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const passwordFormRef = ref(null)
 
-// 从 userList 中获取完整的用户信息
-const userInfo = computed(() => {
-  const user = userList.value.find(u => u.username === userStore.userInfo.username)
-  return user || { department: '', phone: '' }
+const userInfo = computed(() => userStore.userInfo || {})
+
+onMounted(() => {
+  if (userStore.token) {
+    userStore.ensureProfile().catch(() => {
+      // ignore fetch errors (handled globally)
+    })
+  }
 })
 
 // 密码表单
@@ -193,7 +201,7 @@ const handleChangePassword = async () => {
   await passwordFormRef.value.validate((valid) => {
     if (valid) {
       // Mock 环境：不真实验证原密码，只检查新密码一致性
-      ElMessage.success('密码修改成功！')
+      ElMessage.success('密码修改成功！（演示环境未接入后端接口）')
       handleResetForm()
     }
   })

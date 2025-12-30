@@ -20,10 +20,22 @@
           活动信息
         </el-divider>
 
-        <el-form-item label="活动名称" prop="activity_name">
+        <el-form-item label="活动名称" prop="activityName">
           <el-input
-            v-model="formModel.activity_name"
+            v-model="formModel.activityName"
             placeholder="请输入活动名称"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="活动描述" prop="activityDescription">
+          <el-input
+            v-model="formModel.activityDescription"
+            type="textarea"
+            placeholder="请描述活动目的、规模等信息"
+            :rows="4"
+            maxlength="500"
+            show-word-limit
             clearable
           />
         </el-form-item>
@@ -34,12 +46,13 @@
           场地预约
         </el-divider>
 
-        <el-form-item label="预约场地" prop="venue_id">
+        <el-form-item label="预约场地" prop="venueId">
           <el-select
-            v-model="formModel.venue_id"
+            v-model="formModel.venueId"
             placeholder="请选择场地"
             style="width: 100%"
             clearable
+            :loading="loadingVenues"
           >
             <el-option
               v-for="venue in availableVenues"
@@ -50,15 +63,14 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="预约时间" prop="time_range">
+        <el-form-item label="预约时间" prop="timeRange">
           <el-date-picker
-            v-model="formModel.time_range"
+            v-model="formModel.timeRange"
             type="datetimerange"
             range-separator="至"
             start-placeholder="开始时间"
             end-placeholder="结束时间"
             format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DD HH:mm:ss"
             style="width: 100%"
           />
         </el-form-item>
@@ -72,32 +84,33 @@
         <el-form-item>
           <div style="width: 100%">
             <div
-              v-for="(item, index) in formModel.requested_materials"
+              v-for="(item, index) in formModel.materials"
               :key="index"
               style="display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start"
             >
               <el-form-item
-                :prop="`requested_materials.${index}.material_id`"
+                :prop="`materials.${index}.materialId`"
                 :rules="[{ required: true, message: '请选择物资', trigger: 'change' }]"
                 style="flex: 1; margin-bottom: 0"
               >
                 <el-select
-                  v-model="item.material_id"
+                  v-model="item.materialId"
                   placeholder="请选择物资"
                   style="width: 100%"
                   clearable
+                  :loading="loadingMaterials"
                 >
                   <el-option
-                    v-for="material in materialList"
+                    v-for="material in materialOptions"
                     :key="material.id"
-                    :label="`${material.name} (库存${material.total_stock})`"
+                    :label="`${material.name} (可用${material.availableQuantity}${material.unit})`"
                     :value="material.id"
                   />
                 </el-select>
               </el-form-item>
 
               <el-form-item
-                :prop="`requested_materials.${index}.quantity`"
+                :prop="`materials.${index}.quantity`"
                 :rules="[{ required: true, message: '请输入数量', trigger: 'blur' }]"
                 style="width: 150px; margin-bottom: 0"
               >
@@ -131,7 +144,7 @@
 
         <!-- 提交按钮 -->
         <el-form-item>
-          <el-button type="primary" size="large" @click="handleSubmit">
+          <el-button type="primary" size="large" :loading="submitting" @click="handleSubmit">
             提交申请
           </el-button>
           <el-button size="large" @click="handleReset">
@@ -144,111 +157,183 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/store/user.js'
-import { venueList, materialList, applicationList } from '@/mock/data.js'
 import { ElMessage } from 'element-plus'
 import { InfoFilled, OfficeBuilding, Box, Plus, Delete } from '@element-plus/icons-vue'
+import { getMaterials } from '@/api/materials'
+import { getVenues, getAvailableVenues } from '@/api/venues'
+import { createApplication } from '@/api/applications'
 
 const router = useRouter()
-const userStore = useUserStore()
 const formRef = ref(null)
+const materialOptions = ref([])
+const venueOptions = ref([])
+const loadingMaterials = ref(false)
+const loadingVenues = ref(false)
+const submitting = ref(false)
 
-// 表单数据
 const formModel = reactive({
-  activity_name: '',
-  venue_id: null,
-  time_range: [],
-  requested_materials: []
+  activityName: '',
+  activityDescription: '',
+  venueId: null,
+  timeRange: [],
+  materials: []
 })
 
-// 表单验证规则
 const formRules = {
-  activity_name: [
+  activityName: [
     { required: true, message: '请输入活动名称', trigger: 'blur' },
     { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
   ],
-  venue_id: [
+  activityDescription: [
+    { required: true, message: '请输入活动描述', trigger: 'blur' },
+    { min: 10, max: 500, message: '长度在 10 到 500 个字符', trigger: 'blur' }
+  ],
+  venueId: [
     { required: true, message: '请选择场地', trigger: 'change' }
   ],
-  time_range: [
+  timeRange: [
     { required: true, message: '请选择预约时间', trigger: 'change' }
   ]
 }
 
-// 可用场地（只显示开放预约的场地）
-const availableVenues = computed(() => {
-  return venueList.value.filter(venue => venue.status === '开放预约')
-})
+const availableVenues = computed(() => venueOptions.value)
 
-// 添加物资
+const normalizeList = (result) => {
+  if (Array.isArray(result?.list)) return result.list
+  if (Array.isArray(result)) return result
+  return []
+}
+
+const fetchMaterials = async () => {
+  loadingMaterials.value = true
+  try {
+    const data = await getMaterials({ page: 1, size: 100 })
+    materialOptions.value = normalizeList(data)
+  } catch (error) {
+    ElMessage.error('加载物资列表失败')
+  } finally {
+    loadingMaterials.value = false
+  }
+}
+
+const fetchDefaultVenues = async () => {
+  loadingVenues.value = true
+  try {
+    const data = await getVenues({ page: 1, size: 100, status: 'available' })
+    venueOptions.value = normalizeList(data)
+  } catch (error) {
+    ElMessage.error('加载场地列表失败')
+  } finally {
+    loadingVenues.value = false
+  }
+}
+
+const fetchAvailableVenues = async () => {
+  if (!formModel.timeRange || formModel.timeRange.length !== 2) {
+    fetchDefaultVenues()
+    return
+  }
+
+  const [start, end] = formModel.timeRange
+  if (!start || !end) {
+    fetchDefaultVenues()
+    return
+  }
+
+  loadingVenues.value = true
+  try {
+    const data = await getAvailableVenues({
+      startTime: new Date(start).toISOString(),
+      endTime: new Date(end).toISOString()
+    })
+    venueOptions.value = normalizeList(data)
+    if (!venueOptions.value.some(v => v.id === formModel.venueId)) {
+      formModel.venueId = null
+    }
+  } catch (error) {
+    ElMessage.error('查询可用场地失败')
+  } finally {
+    loadingVenues.value = false
+  }
+}
+
 const addMaterial = () => {
-  formModel.requested_materials.push({
-    material_id: null,
+  formModel.materials.push({
+    materialId: null,
     quantity: 1
   })
 }
 
-// 删除物资
 const removeMaterial = (index) => {
-  formModel.requested_materials.splice(index, 1)
+  formModel.materials.splice(index, 1)
 }
 
-// 重置表单
 const handleReset = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
-  formModel.requested_materials = []
+  formModel.materials = []
+  fetchDefaultVenues()
 }
 
-// 提交申请
 const handleSubmit = async () => {
   if (!formRef.value) return
 
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      // 处理物资数据，添加物资名称
-      const processedMaterials = formModel.requested_materials.map(item => {
-        const material = materialList.value.find(m => m.id === item.material_id)
-        return {
-          material_id: item.material_id,
-          name: material ? material.name : '未知物资',
-          quantity: item.quantity
-        }
-      })
+  const valid = await formRef.value.validate()
+  if (!valid) return
 
-      // 生成新的申请ID
-      const newId = applicationList.value.length > 0
-        ? Math.max(...applicationList.value.map(app => app.id)) + 1
-        : 1
+  if (formModel.materials.length === 0) {
+    ElMessage.error('请至少申请一个物资')
+    return
+  }
 
-      // 创建新申请对象
-      const newApplication = {
-        id: newId,
-        activity_name: formModel.activity_name,
-        applicant_username: userStore.userInfo.username,
-        venue_id: formModel.venue_id,
-        start_time: formModel.time_range[0],
-        end_time: formModel.time_range[1],
-        status: '待审核',
-        requested_materials: processedMaterials
-      }
+  const invalidMaterial = formModel.materials.find(
+    item => !item.materialId || !item.quantity || item.quantity <= 0
+  )
+  if (invalidMaterial) {
+    ElMessage.error('请完善物资选择和数量')
+    return
+  }
 
-      // 添加到全局申请列表
-      applicationList.value.push(newApplication)
-
-      // 显示成功提示
-      ElMessage.success('申请提交成功！')
-
-      // 跳转到"我的申请"页面
-      router.push('/apply/my-list')
-    } else {
-      ElMessage.error('请填写完整的申请信息')
-    }
-  })
+  submitting.value = true
+  try {
+    await createApplication({
+      activityName: formModel.activityName,
+      activityDescription: formModel.activityDescription,
+      venueId: formModel.venueId,
+      startTime: new Date(formModel.timeRange[0]).toISOString(),
+      endTime: new Date(formModel.timeRange[1]).toISOString(),
+      materials: formModel.materials.map(item => ({
+        materialId: item.materialId,
+        quantity: item.quantity
+      }))
+    })
+    ElMessage.success('申请提交成功')
+    router.push('/apply/my-list')
+  } catch (error) {
+    // 错误提示在拦截器中已处理
+  } finally {
+    submitting.value = false
+  }
 }
+
+watch(
+  () => [...formModel.timeRange],
+  () => {
+    if (formModel.timeRange.length === 2) {
+      fetchAvailableVenues()
+    } else {
+      fetchDefaultVenues()
+    }
+  }
+)
+
+onMounted(() => {
+  fetchMaterials()
+  fetchDefaultVenues()
+})
 </script>
 
 <style scoped>

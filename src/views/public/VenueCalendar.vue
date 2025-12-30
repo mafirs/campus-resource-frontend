@@ -6,9 +6,10 @@
           <span>场地预约日历</span>
           <el-select
             v-model="selectedVenueId"
-            placeholder="选择场地（默认显示全部）"
+            placeholder="选择场地（默认全部）"
             clearable
-            style="width: 250px"
+            style="width: 260px"
+            @change="fetchBookings"
           >
             <el-option
               v-for="venue in availableVenues"
@@ -20,29 +21,26 @@
         </div>
       </template>
 
-      <!-- 日历说明 -->
       <el-alert
         title="使用说明"
         type="info"
         :closable="false"
         style="margin-bottom: 20px"
       >
-        <p>📅 日历显示所有<strong>已通过</strong>的场地预约</p>
-        <p>🏢 可以通过上方下拉框筛选特定场地</p>
-        <p>🎯 点击日期可以查看当天的活动详情</p>
+        <p>📅 日历展示后端返回的<strong>已通过</strong>预约</p>
+        <p>🏢 可通过上方下拉框筛选特定场地</p>
+        <p>🎯 点击标签可查看活动详情</p>
       </el-alert>
 
-      <!-- 统计信息 -->
       <div class="calendar-stats">
         <el-tag type="success" size="large">
           本月预约: {{ currentMonthEvents.length }} 个活动
         </el-tag>
         <el-tag type="primary" size="large" style="margin-left: 10px">
-          {{ selectedVenueId ? '当前场地' : '所有场地' }}
+          {{ selectedVenueId ? currentVenueName : '所有场地' }}
         </el-tag>
       </div>
 
-      <!-- 日历组件 -->
       <el-calendar v-model="calendarValue">
         <template #date-cell="{ data }">
           <div class="calendar-day">
@@ -56,7 +54,7 @@
                 class="event-tag"
                 @click="showEventDetail(event)"
               >
-                {{ event.activity_name }}
+                {{ event.activityName }}
               </el-tag>
             </div>
           </div>
@@ -64,42 +62,29 @@
       </el-calendar>
     </el-card>
 
-    <!-- 活动详情对话框 -->
     <el-dialog
       v-model="detailDialogVisible"
-      :title="selectedEvent?.activity_name"
+      :title="selectedEvent?.activityName"
       width="600px"
     >
       <el-descriptions v-if="selectedEvent" :column="2" border>
         <el-descriptions-item label="活动名称" :span="2">
-          <el-tag type="primary" size="large">{{ selectedEvent.activity_name }}</el-tag>
+          <el-tag type="primary" size="large">{{ selectedEvent.activityName }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="申请人">
-          {{ selectedEvent.applicant_username }}
+          {{ selectedEvent.applicantName }}
         </el-descriptions-item>
         <el-descriptions-item label="场地">
-          {{ getVenueName(selectedEvent.venue_id) }}
+          {{ selectedEvent.venueName }}
         </el-descriptions-item>
         <el-descriptions-item label="开始时间">
-          {{ selectedEvent.start_time }}
+          {{ formatDateTime(selectedEvent.startTime) }}
         </el-descriptions-item>
         <el-descriptions-item label="结束时间">
-          {{ selectedEvent.end_time }}
+          {{ formatDateTime(selectedEvent.endTime) }}
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag type="success">{{ selectedEvent.status }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="借用物资" :span="2">
-          <div v-if="selectedEvent.requested_materials.length > 0">
-            <el-tag
-              v-for="(item, index) in selectedEvent.requested_materials"
-              :key="index"
-              style="margin: 2px"
-            >
-              {{ item.name }} × {{ item.quantity }}
-            </el-tag>
-          </div>
-          <span v-else style="color: #909399">无</span>
+          <el-tag type="success">已通过</el-tag>
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -107,78 +92,127 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { applicationList, venueList } from '@/mock/data.js'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
+import { getVenues, getVenueBookings } from '@/api/venues'
 
-// 选中的场地ID
 const selectedVenueId = ref(null)
-
-// 日历当前值
 const calendarValue = ref(new Date())
 
-// 详情对话框
 const detailDialogVisible = ref(false)
 const selectedEvent = ref(null)
 
-// 可用场地列表（只显示开放预约的）
-const availableVenues = computed(() => {
-  return venueList.value.filter(venue => venue.status === '开放预约')
+const venues = ref([])
+const events = ref([])
+const loadingVenues = ref(false)
+const loadingEvents = ref(false)
+
+const availableVenues = computed(() => venues.value.filter(v => v.status === 'available'))
+
+const currentVenueName = computed(() => {
+  const venue = venues.value.find(v => v.id === selectedVenueId.value)
+  return venue ? venue.name : '所有场地'
 })
 
-// 日历事件（已通过的申请）
-const calendarEvents = computed(() => {
-  let events = applicationList.value.filter(app => app.status === '已通过')
-  
-  // 如果选择了特定场地，则过滤
-  if (selectedVenueId.value) {
-    events = events.filter(app => app.venue_id === selectedVenueId.value)
-  }
-  
-  return events
-})
-
-// 当前月份的事件
 const currentMonthEvents = computed(() => {
-  const currentMonth = calendarValue.value.getMonth()
-  const currentYear = calendarValue.value.getFullYear()
-  
-  return calendarEvents.value.filter(event => {
-    const eventDate = new Date(event.start_time)
-    return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear
+  const month = calendarValue.value.getMonth()
+  const year = calendarValue.value.getFullYear()
+  return events.value.filter((event) => {
+    const start = new Date(event.startTime)
+    return start.getMonth() === month && start.getFullYear() === year
   })
 })
 
-// 获取某一天的事件
+const fetchVenues = async () => {
+  loadingVenues.value = true
+  try {
+    const data = await getVenues({ page: 1, size: 100, status: 'available' })
+    venues.value = data.list || []
+    if (!selectedVenueId.value && venues.value.length > 0) {
+      selectedVenueId.value = null
+    }
+  } catch (error) {
+    ElMessage.error('加载场地列表失败')
+  } finally {
+    loadingVenues.value = false
+  }
+}
+
+const fetchBookings = async () => {
+  loadingEvents.value = true
+  try {
+    let bookings = []
+    if (selectedVenueId.value) {
+      const venue = venues.value.find((v) => v.id === selectedVenueId.value)
+      const data = await getVenueBookings(selectedVenueId.value, { days: 30 })
+      bookings = (data || []).map((item) => ({
+        ...item,
+        venueId: venue?.id,
+        venueName: venue?.name
+      }))
+    } else {
+      const requests = venues.value.map((venue) =>
+        getVenueBookings(venue.id, { days: 30 }).then((data) =>
+          (data || []).map((item) => ({ ...item, venueId: venue.id, venueName: venue.name }))
+        )
+      )
+      const results = await Promise.all(requests)
+      bookings = results.flat()
+    }
+
+    events.value = bookings.map((item) => ({
+      ...item,
+      venueName: item.venueName || getVenueName(item.venueId),
+      applicantName: item.applicantName || ''
+    }))
+  } catch (error) {
+    ElMessage.error('加载预约信息失败')
+  } finally {
+    loadingEvents.value = false
+  }
+}
+
 const getEventsForDay = (day) => {
-  // day 格式: YYYY-MM-DD
-  const dayDate = new Date(day)
-  const dayStr = dayDate.toISOString().split('T')[0]
-  
-  return calendarEvents.value.filter(event => {
-    // 获取活动开始日期（只比较日期部分）
-    const eventStartDate = new Date(event.start_time).toISOString().split('T')[0]
-    return eventStartDate === dayStr
+  const dayStr = new Date(day).toISOString().split('T')[0]
+  return events.value.filter((event) => {
+    const eventStart = new Date(event.startTime).toISOString().split('T')[0]
+    return eventStart === dayStr
   })
 }
 
-// 获取事件标签类型
 const getEventTagType = (event) => {
-  // 根据场地ID返回不同颜色
   const colors = ['primary', 'success', 'warning', 'danger', 'info']
-  return colors[event.venue_id % colors.length]
+  const venueIndex = event.venueId || 0
+  return colors[venueIndex % colors.length]
 }
 
-// 获取场地名称
 const getVenueName = (venueId) => {
-  const venue = venueList.value.find(v => v.id === venueId)
+  const venue = venues.value.find((v) => v.id === venueId)
   return venue ? venue.name : '未知场地'
 }
 
-// 显示活动详情
+const formatDateTime = (value) => {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleString()
+  } catch {
+    return value
+  }
+}
+
 const showEventDetail = (event) => {
-  selectedEvent.value = event
+  selectedEvent.value = {
+    ...event,
+    venueName: event.venueName || getVenueName(event.venueId)
+  }
   detailDialogVisible.value = true
 }
+
+onMounted(async () => {
+  await fetchVenues()
+  await fetchBookings()
+})
 </script>
 
 <style scoped>

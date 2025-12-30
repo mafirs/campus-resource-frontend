@@ -106,7 +106,11 @@
       </el-header>
       
       <el-main class="layout-main">
-        <router-view />
+        <div
+          :class="['layout-content', { page: shouldUsePageWrapper }]"
+        >
+          <router-view />
+        </div>
       </el-main>
     </el-container>
   </el-container>
@@ -116,7 +120,6 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
-import { notificationList } from '@/mock/data.js'
 import SideMenu from '../components/SideMenu.vue'
 import {
   Fold,
@@ -135,6 +138,7 @@ const userStore = useUserStore()
 const isCollapse = ref(false)
 
 const currentRoute = computed(() => route)
+const shouldUsePageWrapper = computed(() => currentRoute.value.meta?.usePageWrapper !== false)
 
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
@@ -158,11 +162,12 @@ const getRoleTagType = () => {
   return typeMap[userStore.userInfo.role] || 'info'
 }
 
-// 当前用户的通知（按时间倒序）
+const notifications = ref([])
+
 const myNotifications = computed(() => {
-  return notificationList.value
-    .filter(n => n.recipient === userStore.userInfo.username)
-    .sort((a, b) => b.id - a.id) // 最新的在前面
+  return notifications.value
+    .filter(n => !n.recipient || n.recipient === userStore.userInfo.username)
+    .sort((a, b) => (b.id || 0) - (a.id || 0))
 })
 
 // 未读通知数量
@@ -215,8 +220,8 @@ const handleCommand = (command) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   padding: 0 20px;
 }
 
@@ -345,9 +350,13 @@ const handleCommand = (command) => {
 }
 
 .layout-main {
-  background-color: #f0f2f5;
+  background-color: var(--bg);
   overflow-y: auto;
   height: calc(100vh - 60px);
+}
+
+.layout-content {
+  min-height: calc(100vh - 60px);
 }
 </style>
 

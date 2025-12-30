@@ -46,9 +46,9 @@
       
       <div class="login-tips">
         <el-divider>测试账号</el-divider>
-        <p>管理员: admin / 任意密码</p>
-        <p>审核员: reviewer / 任意密码</p>
-        <p>普通用户: 其他用户名 / 任意密码</p>
+        <p>管理员: admin / 123456</p>
+        <p>审核员: reviewer / 123456</p>
+        <p>普通用户: student / 123456</p>
       </div>
     </el-card>
   </div>
@@ -83,27 +83,28 @@ const rules = {
 const handleLogin = async () => {
   if (!loginFormRef.value) return
   
-  await loginFormRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        await userStore.login(loginForm)
-        ElMessage.success('登录成功')
-        
-        // 根据角色动态跳转
-        const role = userStore.userInfo.role
-        if (role === 'admin' || role === 'reviewer') {
-          router.push('/dashboard')  // admin 和 reviewer 跳转到数据看板
-        } else {
-          router.push('/venue-calendar')  // user 跳转到场地日历
-        }
-      } catch (error) {
-        ElMessage.error('登录失败')
-      } finally {
-        loading.value = false
-      }
+  const valid = await loginFormRef.value.validate()
+  if (!valid) return
+
+  loading.value = true
+  try {
+    await userStore.login({
+      username: loginForm.username,
+      password: loginForm.password
+    })
+    ElMessage.success('登录成功')
+    
+    const role = userStore.userInfo.role
+    if (role === 'admin' || role === 'reviewer') {
+      router.push('/dashboard')
+    } else {
+      router.push('/venue-calendar')
     }
-  })
+  } catch (error) {
+    ElMessage.error(error?.message || '登录失败，请检查账号或密码')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -113,14 +114,16 @@ const handleLogin = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  background: var(--bg);
+  padding: var(--space-6);
 }
 
 .login-card {
   width: 100%;
   max-width: 450px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 .card-header h2 {
@@ -145,7 +148,7 @@ const handleLogin = async () => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .login-container {
-    padding: 15px;
+    padding: var(--space-4);
   }
   
   .login-card {

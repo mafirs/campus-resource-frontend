@@ -41,7 +41,8 @@ const routes = [
         component: Dashboard,
         meta: { 
           title: '首页', 
-          roles: ['admin', 'reviewer'] 
+          roles: ['admin', 'reviewer'],
+          usePageWrapper: false
         }
       },
       {
@@ -77,7 +78,7 @@ const routes = [
         component: () => import('../views/approval/ApprovalList.vue'),
         meta: { 
           title: '待我审批', 
-          roles: ['reviewer'] 
+          roles: ['reviewer', 'admin'] 
         }
       },
       {
@@ -132,12 +133,20 @@ const router = createRouter({
 })
 
 // Navigation guard
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   
   // Try to load user from localStorage if not already loaded
   if (!userStore.token && localStorage.getItem('token')) {
     userStore.loadUserFromStorage()
+  }
+
+  if (userStore.token && !userStore.profileLoaded) {
+    try {
+      await userStore.ensureProfile()
+    } catch (error) {
+      return next('/login')
+    }
   }
   
   // Whitelist - allow access to public pages

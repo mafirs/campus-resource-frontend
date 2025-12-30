@@ -1,9 +1,9 @@
-import request from '../utils/request'
+export * from './auth'
+export * from './venues'
+export * from './materials'
+export * from './applications'
+export * from './approvals'
+export * from './dashboard'
 
-// API endpoints will be added here as needed
-// Example:
-// export const getUserInfo = () => request.get('/user/info')
-// export const getVenueList = () => request.get('/venues')
-
-export default request
+export { default as request } from '@/utils/request'
 

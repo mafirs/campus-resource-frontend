@@ -8,43 +8,43 @@
         </div>
       </template>
 
-      <el-table :data="pendingApplications" stripe border style="width: 100%">
+      <el-table :data="pendingApplications" stripe border style="width: 100%" v-loading="loading">
         <!-- 展开行 -->
         <el-table-column type="expand">
           <template #default="{ row }">
             <div class="expand-content">
               <el-descriptions :column="2" border>
                 <el-descriptions-item label="活动名称" :span="2">
-                  <el-tag type="primary" size="large">{{ row.activity_name }}</el-tag>
+                  <el-tag type="primary" size="large">{{ row.activityName }}</el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="申请人">
-                  {{ row.applicant_username }}
+                  {{ row.applicantName }}（{{ row.applicantUsername }}）
                 </el-descriptions-item>
                 <el-descriptions-item label="场地">
-                  {{ row.venue_name }}
+                  {{ row.venueName }} / {{ row.venueLocation }}
                 </el-descriptions-item>
                 <el-descriptions-item label="开始时间">
-                  {{ row.start_time }}
+                  {{ new Date(row.startTime).toLocaleString() }}
                 </el-descriptions-item>
                 <el-descriptions-item label="结束时间">
-                  {{ row.end_time }}
+                  {{ new Date(row.endTime).toLocaleString() }}
                 </el-descriptions-item>
                 <el-descriptions-item label="借用物资" :span="2">
-                  <div v-if="row.requested_materials.length > 0" class="materials-list">
-                    <el-table :data="row.requested_materials" size="small" border>
-                      <el-table-column prop="name" label="物资名称" width="200" />
-                      <el-table-column prop="quantity" label="借用数量" width="120">
+                  <div v-if="row.materials?.length" class="materials-list">
+                    <el-table :data="row.materials" size="small" border>
+                      <el-table-column prop="materialName" label="物资名称" width="200" />
+                      <el-table-column prop="requestedQuantity" label="借用数量" width="120">
                         <template #default="{ row: material }">
-                          <el-tag size="small">{{ material.quantity }}</el-tag>
+                          <el-tag size="small">{{ material.requestedQuantity }}</el-tag>
                         </template>
                       </el-table-column>
-                      <el-table-column label="库存状态" width="150">
+                      <el-table-column label="库存状态" width="180">
                         <template #default="{ row: material }">
                           <el-tag
-                            :type="getStockStatus(material.material_id, material.quantity).type"
+                            :type="getStockStatusType(material)"
                             size="small"
                           >
-                            {{ getStockStatus(material.material_id, material.quantity).text }}
+                            {{ getStockStatus(material) }}
                           </el-tag>
                         </template>
                       </el-table-column>
@@ -58,10 +58,14 @@
         </el-table-column>
 
         <el-table-column prop="id" label="申请ID" width="80" />
-        <el-table-column prop="activity_name" label="活动名称" min-width="150" />
-        <el-table-column prop="applicant_username" label="申请人" width="120" />
-        <el-table-column prop="venue_name" label="场地名称" min-width="120" />
-        <el-table-column prop="start_time" label="申请时间" width="180" />
+        <el-table-column prop="activityName" label="活动名称" min-width="150" />
+        <el-table-column prop="applicantName" label="申请人" width="120" />
+        <el-table-column prop="venueName" label="场地名称" min-width="150" />
+        <el-table-column label="申请时间" width="180">
+          <template #default="{ row }">
+            {{ new Date(row.createdAt).toLocaleString() }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button
@@ -86,79 +90,88 @@
         v-if="pendingApplications.length === 0"
         description="暂无待审批的申请"
       />
+
+      <div class="table-pagination" v-else>
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50]"
+          :page-size="pagination.size"
+          :current-page="pagination.page"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { applicationList, venueList, materialList, notificationList } from '@/mock/data.js'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getPendingApprovals, approveApplication, rejectApplication } from '@/api/approvals'
 
-// 计算属性：过滤待审核的申请，并添加场地名称
-const pendingApplications = computed(() => {
-  return applicationList.value
-    .filter(app => app.status === '待审核')
-    .map(app => {
-      // 查找对应的场地名称
-      const venue = venueList.value.find(v => v.id === app.venue_id)
-      return {
-        ...app,
-        venue_name: venue ? venue.name : '未知场地'
-      }
-    })
+const loading = ref(false)
+const pendingApplications = ref([])
+const pagination = reactive({
+  page: 1,
+  size: 10,
+  total: 0
 })
 
-// 获取物资库存状态
-const getStockStatus = (materialId, requestedQuantity) => {
-  const material = materialList.value.find(m => m.id === materialId)
-  if (!material) {
-    return { type: 'info', text: '未知物资' }
-  }
+const stockStatusMap = {
+  sufficient: { type: 'success', text: '库存充足' },
+  low: { type: 'warning', text: '库存紧张' },
+  insufficient: { type: 'danger', text: '库存不足' }
+}
 
-  const stock = material.total_stock
-  if (requestedQuantity > stock) {
-    return { type: 'danger', text: `库存不足 (仅剩${stock})` }
-  } else if (requestedQuantity > stock * 0.8) {
-    return { type: 'warning', text: `库存紧张 (剩余${stock})` }
-  } else {
-    return { type: 'success', text: `库存充足 (剩余${stock})` }
+const fetchApprovals = async () => {
+  loading.value = true
+  try {
+    const data = await getPendingApprovals({
+      page: pagination.page,
+      size: pagination.size
+    })
+    pendingApplications.value = data.list || []
+    pagination.total = data.total || 0
+  } catch (error) {
+    ElMessage.error('获取待审批列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
-// 通过申请
+const getStockStatus = (material) => {
+  const status = stockStatusMap[material.stockStatus] || { type: 'info', text: '未知' }
+  const available = material.availableQuantity ?? '-'
+  return `${status.text}（可用${available}）`
+}
+
+const getStockStatusType = (material) => {
+  return stockStatusMap[material.stockStatus]?.type || 'info'
+}
+
 const handleApprove = (row) => {
   ElMessageBox.confirm(
-    `确认通过"${row.activity_name}"的申请吗？`,
+    `确认通过「${row.activityName}」的申请吗？`,
     '审批确认',
     {
       confirmButtonText: '确认通过',
       cancelButtonText: '取消',
       type: 'success'
     }
-  ).then(() => {
-    // 找到对应的申请并修改状态
-    const application = applicationList.value.find(app => app.id === row.id)
-    if (application) {
-      application.status = '已通过'
-      
-      // 创建通知
-      notificationList.value.push({
-        id: Date.now(),
-        recipient: application.applicant_username,
-        message: `您的申请 [${application.activity_name}] 已被通过`,
-        time: new Date().toLocaleString(),
-        read: false
-      })
-      
+  ).then(async () => {
+    try {
+      await approveApplication(row.id)
       ElMessage.success('审批通过')
+      fetchApprovals()
+    } catch (error) {
+      // 错误提示由拦截器处理
     }
-  }).catch(() => {
-    // 用户取消操作
-  })
+  }).catch(() => {})
 }
 
-// 驳回申请
 const handleReject = (row) => {
   ElMessageBox.prompt(
     '请输入驳回理由',
@@ -175,29 +188,31 @@ const handleReject = (row) => {
         return true
       }
     }
-  ).then(({ value }) => {
-    // 找到对应的申请并修改状态
-    const application = applicationList.value.find(app => app.id === row.id)
-    if (application) {
-      application.status = '未通过'
-      // 存储驳回理由
-      application.reject_reason = value
-      
-      // 创建通知
-      notificationList.value.push({
-        id: Date.now(),
-        recipient: application.applicant_username,
-        message: `您的申请 [${application.activity_name}] 已被驳回，理由：${value}`,
-        time: new Date().toLocaleString(),
-        read: false
-      })
-      
+  ).then(async ({ value }) => {
+    try {
+      await rejectApplication(row.id, { rejectionReason: value })
       ElMessage.warning('申请已驳回')
+      fetchApprovals()
+    } catch (error) {
+      // 错误提示由拦截器处理
     }
-  }).catch(() => {
-    // 用户取消操作
-  })
+  }).catch(() => {})
 }
+
+const handlePageChange = (page) => {
+  pagination.page = page
+  fetchApprovals()
+}
+
+const handleSizeChange = (size) => {
+  pagination.size = size
+  pagination.page = 1
+  fetchApprovals()
+}
+
+onMounted(() => {
+  fetchApprovals()
+})
 </script>
 
 <style scoped>
@@ -224,6 +239,12 @@ const handleReject = (row) => {
 
 :deep(.el-descriptions__label) {
   font-weight: 600;
+}
+
+.table-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
 
