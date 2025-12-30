@@ -2,11 +2,12 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../store/user'
 
-const DEFAULT_API_BASE_URL = 'https://tlrfzzmcbmzm.sealoshzh.site/api'
+// 使用相对路径，通过 Vite 代理转发到后端
+const DEFAULT_API_BASE_URL = '/api'
 
 const resolveBaseUrl = () => {
   const raw = import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
-  return raw.endsWith('/') ? raw : `${raw}/`
+  return raw.endsWith('/') ? raw.slice(0, -1) : raw
 }
 
 const request = axios.create({
