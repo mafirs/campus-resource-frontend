@@ -17,15 +17,26 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../store/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const goBack = () => {
   router.back()
 }
 
 const goHome = () => {
-  router.push('/')
+  // 根据用户角色跳转到对应的首页
+  const role = userStore.userInfo?.role
+  if (role === 'admin' || role === 'reviewer') {
+    router.push('/dashboard')
+  } else if (role === 'teacher' || role === 'user') {
+    router.push('/venue-calendar')
+  } else {
+    // 如果没有角色信息，说明登录状态异常，跳转到登录页
+    router.push('/login')
+  }
 }
 </script>
 

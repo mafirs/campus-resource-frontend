@@ -27,9 +27,9 @@
         :closable="false"
         style="margin-bottom: 20px"
       >
-        <p>📅 日历展示后端返回的<strong>已通过</strong>预约</p>
-        <p>🏢 可通过上方下拉框筛选特定场地</p>
-        <p>🎯 点击标签可查看活动详情</p>
+        <p>日历展示后端返回的<strong>已通过</strong>预约</p>
+        <p>可通过上方下拉框筛选特定场地</p>
+        <p>点击标签可查看活动详情</p>
       </el-alert>
 
       <div class="calendar-stats">

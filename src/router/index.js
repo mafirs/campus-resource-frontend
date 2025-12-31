@@ -33,7 +33,10 @@ const routes = [
     path: '/',
     component: Layout,
     meta: { requiresAuth: true },
-    redirect: '/dashboard',
+    redirect: (to) => {
+      // 动态重定向将在路由守卫中处理
+      return '/dashboard'
+    },
     children: [
       {
         path: 'dashboard',
@@ -51,7 +54,7 @@ const routes = [
         component: () => import('../views/application/ApplicationForm.vue'),
         meta: { 
           title: '发起申请', 
-          roles: ['user'] 
+          roles: ['user', 'teacher'] 
         }
       },
       {
@@ -60,7 +63,7 @@ const routes = [
         component: () => import('../views/application/MyApplications.vue'),
         meta: { 
           title: '我的申请', 
-          roles: ['user'] 
+          roles: ['user', 'teacher'] 
         }
       },
       {
@@ -69,7 +72,7 @@ const routes = [
         component: () => import('../views/public/VenueCalendar.vue'),
         meta: { 
           title: '场地日历', 
-          roles: ['user'] 
+          roles: ['user', 'teacher'] 
         }
       },
       {
@@ -114,7 +117,7 @@ const routes = [
         component: () => import('../views/profile/UserProfile.vue'),
         meta: { 
           title: '个人中心', 
-          roles: ['admin', 'reviewer', 'user'],
+          roles: ['admin', 'reviewer', 'user', 'teacher'],
           hidden: true
         }
       }
@@ -154,6 +157,16 @@ router.beforeEach(async (to, from, next) => {
   if (whiteList.includes(to.path)) {
     next()
     return
+  }
+  
+  // 智能重定向：访问根路径时，根据角色跳转到对应首页
+  if (to.path === '/' && userStore.token) {
+    const role = userStore.userInfo.role
+    if (role === 'admin' || role === 'reviewer') {
+      return next('/dashboard')
+    } else if (role === 'teacher' || role === 'user') {
+      return next('/venue-calendar')
+    }
   }
   
   // Check if route requires authentication

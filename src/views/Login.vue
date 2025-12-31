@@ -48,6 +48,7 @@
         <el-divider>测试账号</el-divider>
         <p>管理员: admin / 123456</p>
         <p>审核员: reviewer / 123456</p>
+        <p>老师: teacher / 123456</p>
         <p>普通用户: student / 123456</p>
       </div>
     </el-card>
@@ -86,25 +87,26 @@ const handleLogin = async () => {
   const valid = await loginFormRef.value.validate()
   if (!valid) return
 
-  loading.value = true
-  try {
+      loading.value = true
+      try {
     await userStore.login({
       username: loginForm.username,
       password: loginForm.password
     })
-    ElMessage.success('登录成功')
-    
-    const role = userStore.userInfo.role
-    if (role === 'admin' || role === 'reviewer') {
+        ElMessage.success('登录成功')
+        
+        const role = userStore.userInfo.role
+        if (role === 'admin' || role === 'reviewer') {
       router.push('/dashboard')
-    } else {
+        } else {
+      // user 和 teacher 都跳转到场地日历
       router.push('/venue-calendar')
-    }
-  } catch (error) {
+        }
+      } catch (error) {
     ElMessage.error(error?.message || '登录失败，请检查账号或密码')
-  } finally {
-    loading.value = false
-  }
+      } finally {
+        loading.value = false
+      }
 }
 </script>
 

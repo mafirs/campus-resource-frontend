@@ -74,8 +74,10 @@ export const useUserStore = defineStore('user', () => {
       profileLoaded.value = false
       persistSession()
       if (router.currentRoute.value.path !== '/login') {
-        router.push('/login')
+    router.push('/login')
       }
+      // 刷新页面以确保状态完全清除
+      window.location.reload()
     }
   }
 
@@ -88,7 +90,7 @@ export const useUserStore = defineStore('user', () => {
     }
     if (storedUserInfo) {
       try {
-        userInfo.value = JSON.parse(storedUserInfo)
+      userInfo.value = JSON.parse(storedUserInfo)
         profileLoaded.value = true
       } catch {
         userInfo.value = {}

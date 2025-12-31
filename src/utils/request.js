@@ -7,7 +7,8 @@ const DEFAULT_API_BASE_URL = '/api'
 
 const resolveBaseUrl = () => {
   const raw = import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
-  return raw.endsWith('/') ? raw.slice(0, -1) : raw
+  // 确保以 / 结尾
+  return raw.endsWith('/') ? raw : `${raw}/`
 }
 
 const request = axios.create({

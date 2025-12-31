@@ -251,9 +251,9 @@ const renderCharts = () => {
 const initVenueChart = () => {
   if (!venueChartRef.value) return
   if (venueChart) venueChart.dispose()
-
+  
   venueChart = echarts.init(venueChartRef.value)
-
+  
   const dates = trendData.value.venueUsage.map(item => item.date)
   const counts = trendData.value.venueUsage.map(item => item.count)
 
@@ -286,9 +286,9 @@ const initVenueChart = () => {
 const initMaterialChart = () => {
   if (!materialChartRef.value) return
   if (materialChart) materialChart.dispose()
-
+  
   materialChart = echarts.init(materialChartRef.value)
-
+  
   const dates = trendData.value.materialUsage.map(item => item.date)
   const counts = trendData.value.materialUsage.map(item => item.count)
 
@@ -323,9 +323,9 @@ const initMaterialChart = () => {
 const initStatusChart = () => {
   if (!statusChartRef.value) return
   if (statusChart) statusChart.dispose()
-
+  
   statusChart = echarts.init(statusChartRef.value)
-
+  
   const dates = trendData.value.applicationTrends.map(item => item.date)
   const seriesKeys = Object.keys(statusLabelMap)
   const series = seriesKeys.map((key) => ({
@@ -368,8 +368,8 @@ const disposeCharts = () => {
   if (statusChart) {
     statusChart.dispose()
     statusChart = null
-  }
-}
+          }
+        }
 
 const handleResize = () => {
   if (venueChart) venueChart.resize()

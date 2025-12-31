@@ -15,8 +15,8 @@
         <template #extra>
           <el-button type="primary" @click="$router.push('/dashboard')">
             返回首页
-          </el-button>
-        </template>
+            </el-button>
+          </template>
       </el-result>
     </el-card>
   </div>
