@@ -47,7 +47,7 @@
       <div class="login-tips">
         <el-divider>测试账号</el-divider>
         <p>管理员: admin / 123456</p>
-        <p>审核员: reviewer / 123456</p>
+        <p>导员: reviewer / 123456</p>
         <p>老师: teacher / 123456</p>
         <p>普通用户: student / 123456</p>
       </div>

@@ -52,27 +52,27 @@ const routes = [
         path: 'apply/new',
         name: 'ApplyNew',
         component: () => import('../views/application/ApplicationForm.vue'),
-        meta: { 
-          title: '发起申请', 
-          roles: ['user', 'teacher'] 
+        meta: {
+          title: '发起申请',
+          roles: ['user', 'teacher', 'reviewer']
         }
       },
       {
         path: 'apply/my-list',
         name: 'MyApplications',
         component: () => import('../views/application/MyApplications.vue'),
-        meta: { 
-          title: '我的申请', 
-          roles: ['user', 'teacher'] 
+        meta: {
+          title: '我的申请',
+          roles: ['user', 'teacher', 'reviewer']
         }
       },
       {
         path: 'venue-calendar',
         name: 'VenueCalendar',
         component: () => import('../views/public/VenueCalendar.vue'),
-        meta: { 
-          title: '场地日历', 
-          roles: ['user', 'teacher'] 
+        meta: {
+          title: '场地日历',
+          roles: ['user', 'teacher', 'reviewer']
         }
       },
       {
