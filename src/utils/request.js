@@ -47,18 +47,18 @@ request.interceptors.response.use(
   },
   (error) => {
     const userStore = useUserStore()
-
+    
     if (error.response) {
       const { status, data } = error.response
       const message = data?.message || error.message || '请求失败'
-
+      
       if (status === 401) {
-        ElMessage.error('登录已过期，请重新登录')
-        userStore.logout()
+          ElMessage.error('登录已过期，请重新登录')
+          userStore.logout()
       } else if (status === 403) {
-        ElMessage.error('没有权限访问该资源')
+          ElMessage.error('没有权限访问该资源')
       } else if (status === 404) {
-        ElMessage.error('请求的资源不存在')
+          ElMessage.error('请求的资源不存在')
       } else if (status >= 500) {
         ElMessage.error('服务器错误，请稍后重试')
       } else {
@@ -67,7 +67,7 @@ request.interceptors.response.use(
     } else {
       ElMessage.error('网络错误，请检查您的网络连接')
     }
-
+    
     return Promise.reject(error)
   }
 )

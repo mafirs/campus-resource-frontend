@@ -311,7 +311,7 @@ const handleSubmit = async () => {
       }))
     })
     ElMessage.success('申请提交成功')
-    router.push('/apply/my-list')
+      router.push('/apply/my-list')
   } catch (error) {
     // 错误提示在拦截器中已处理
   } finally {

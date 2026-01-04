@@ -147,7 +147,9 @@ const toggleCollapse = () => {
 const getRoleText = () => {
   const roleMap = {
     admin: '系统管理员',
-    reviewer: '审核员',
+    reviewer: '导员',
+    teacher: '老师',
+    student: '学生',
     user: '普通用户'
   }
   return roleMap[userStore.userInfo.role] || '未知角色'
@@ -157,7 +159,9 @@ const getRoleTagType = () => {
   const typeMap = {
     admin: 'danger',
     reviewer: 'warning',
-    user: 'success'
+    teacher: 'primary',
+    student: 'success',
+    user: 'info'
   }
   return typeMap[userStore.userInfo.role] || 'info'
 }

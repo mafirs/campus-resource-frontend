@@ -140,7 +140,7 @@ const fetchApprovals = async () => {
   } finally {
     loading.value = false
   }
-}
+  }
 
 const getStockStatus = (material) => {
   const status = stockStatusMap[material.stockStatus] || { type: 'info', text: '未知' }
@@ -150,7 +150,7 @@ const getStockStatus = (material) => {
 
 const getStockStatusType = (material) => {
   return stockStatusMap[material.stockStatus]?.type || 'info'
-}
+  }
 
 const handleApprove = (row) => {
   ElMessageBox.confirm(

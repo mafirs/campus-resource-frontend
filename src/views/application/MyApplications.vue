@@ -20,7 +20,7 @@
                 :value="option.value"
               />
             </el-select>
-            <el-button type="primary" @click="goToApply">发起新申请</el-button>
+          <el-button type="primary" @click="goToApply">发起新申请</el-button>
           </div>
         </div>
       </template>

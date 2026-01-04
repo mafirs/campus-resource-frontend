@@ -157,8 +157,10 @@ const fetchBookings = async () => {
           (data || []).map((item) => ({ ...item, venueId: venue.id, venueName: venue.name }))
         )
       )
-      const results = await Promise.all(requests)
-      bookings = results.flat()
+      const results = await Promise.allSettled(requests)
+      bookings = results
+        .filter(result => result.status === 'fulfilled')
+        .flatMap(result => result.value)
     }
 
     events.value = bookings.map((item) => ({

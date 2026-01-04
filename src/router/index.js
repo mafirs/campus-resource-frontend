@@ -42,9 +42,9 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: Dashboard,
-        meta: { 
-          title: '首页', 
-          roles: ['admin', 'reviewer'],
+        meta: {
+          title: '首页',
+          roles: ['admin', 'reviewer', 'student', 'teacher', 'user'],
           usePageWrapper: false
         }
       },
