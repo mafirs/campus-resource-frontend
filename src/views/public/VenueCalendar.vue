@@ -145,7 +145,7 @@ const fetchBookings = async () => {
     let bookings = []
     if (selectedVenueId.value) {
       const venue = venues.value.find((v) => v.id === selectedVenueId.value)
-      const data = await getVenueBookings(selectedVenueId.value, { days: 30 })
+      const data = await getVenueBookings(selectedVenueId.value, { days: 7 })
       bookings = (data || []).map((item) => ({
         ...item,
         venueId: venue?.id,
@@ -153,7 +153,7 @@ const fetchBookings = async () => {
       }))
     } else {
       const requests = venues.value.map((venue) =>
-        getVenueBookings(venue.id, { days: 30 }).then((data) =>
+        getVenueBookings(venue.id, { days: 7 }).then((data) =>
           (data || []).map((item) => ({ ...item, venueId: venue.id, venueName: venue.name }))
         )
       )

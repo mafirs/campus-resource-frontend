@@ -117,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import SideMenu from '../components/SideMenu.vue'
@@ -130,6 +130,7 @@ import {
   Bell
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
+import { getNotifications, markAsRead as apiMarkAsRead, markAllAsRead as apiMarkAllAsRead } from '@/api/notifications'
 
 const route = useRoute()
 const router = useRouter()
@@ -167,6 +168,22 @@ const getRoleTagType = () => {
 }
 
 const notifications = ref([])
+let pollTimer = null
+
+const loadNotifications = async () => {
+  const list = await getNotifications({ unread_only: false, limit: 50 })
+  notifications.value = Array.isArray(list) ? list : []
+}
+
+onMounted(async () => {
+  await loadNotifications()
+  pollTimer = setInterval(loadNotifications, 30000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = null
+})
 
 const myNotifications = computed(() => {
   return notifications.value
@@ -180,14 +197,16 @@ const unreadCount = computed(() => {
 })
 
 // 标记单条通知为已读
-const markAsRead = (notification) => {
-  if (!notification.read) {
-    notification.read = true
-  }
+const markAsRead = async (notification) => {
+  if (!notification?.id) return
+  if (notification.read) return
+  await apiMarkAsRead(notification.id)
+  notification.read = true
 }
 
 // 标记全部为已读
-const markAllAsRead = () => {
+const markAllAsRead = async () => {
+  await apiMarkAllAsRead()
   myNotifications.value.forEach(n => {
     n.read = true
   })

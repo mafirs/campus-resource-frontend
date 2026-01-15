@@ -54,7 +54,7 @@ const routes = [
         component: () => import('../views/application/ApplicationForm.vue'),
         meta: {
           title: '发起申请',
-          roles: ['user', 'teacher', 'reviewer']
+          roles: ['user', 'student', 'teacher', 'reviewer']
         }
       },
       {
@@ -63,7 +63,7 @@ const routes = [
         component: () => import('../views/application/MyApplications.vue'),
         meta: {
           title: '我的申请',
-          roles: ['user', 'teacher', 'reviewer']
+          roles: ['user', 'student', 'teacher', 'reviewer']
         }
       },
       {
@@ -72,7 +72,16 @@ const routes = [
         component: () => import('../views/public/VenueCalendar.vue'),
         meta: {
           title: '场地日历',
-          roles: ['user', 'teacher', 'reviewer']
+          roles: ['user', 'student', 'teacher', 'reviewer']
+        }
+      },
+      {
+        path: 'venues',
+        name: 'VenueList',
+        component: () => import('../views/public/VenueList.vue'),
+        meta: {
+          title: '场地列表',
+          roles: ['user', 'student', 'teacher', 'reviewer']
         }
       },
       {
@@ -164,7 +173,7 @@ router.beforeEach(async (to, from, next) => {
     const role = userStore.userInfo.role
     if (role === 'admin' || role === 'reviewer') {
       return next('/dashboard')
-    } else if (role === 'teacher' || role === 'user') {
+    } else if (role === 'teacher' || role === 'user' || role === 'student') {
       return next('/venue-calendar')
     }
   }
