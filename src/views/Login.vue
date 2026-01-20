@@ -49,7 +49,7 @@
         <p>管理员: admin / 123456</p>
         <p>导员: reviewer / 123456</p>
         <p>老师: teacher / 123456</p>
-        <p>普通用户: student / 123456</p>
+        <p>学生账号student / 123456</p>
       </div>
     </el-card>
   </div>

@@ -112,6 +112,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { getVenues, getVenueBookings } from '@/api/venues'
+import { formatShanghaiDateTime, toShanghaiMs } from '@/utils/datetime'
 
 const DAYS = 7
 
@@ -127,10 +128,7 @@ let timer = null
 
 const normalize = (v) => (v ?? '').toString().trim().toLowerCase()
 
-const parseTime = (v) => {
-  const t = new Date(v).getTime()
-  return Number.isFinite(t) ? t : null
-}
+const parseTime = (v) => toShanghaiMs(v)
 
 const isNowWithin = (start, end) => {
   const now = Date.now()
@@ -140,14 +138,7 @@ const isNowWithin = (start, end) => {
   return now >= s && now <= e
 }
 
-const formatDateTime = (v) => {
-  if (!v) return '-'
-  try {
-    return new Date(v).toLocaleString('zh-CN')
-  } catch {
-    return String(v)
-  }
-}
+const formatDateTime = formatShanghaiDateTime
 
 const formatDateRange = (start, end) => {
   const s = formatDateTime(start)

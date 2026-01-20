@@ -105,6 +105,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyApplications, cancelApplication } from '@/api/applications'
+import { formatShanghaiDateTime } from '@/utils/datetime'
 
 const router = useRouter()
 
@@ -136,14 +137,7 @@ const statusOptions = [
 
 const getStatusMeta = (status) => statusMeta[status] || { label: '未知状态', type: 'info' }
 
-const formatDateTime = (value) => {
-  if (!value) return '-'
-  try {
-    return new Date(value).toLocaleString()
-  } catch {
-    return value
-  }
-}
+const formatDateTime = formatShanghaiDateTime
 
 const canCancel = (status) => ['pending_reviewer', 'pending_admin'].includes(status)
 

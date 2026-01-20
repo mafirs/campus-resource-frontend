@@ -43,7 +43,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ todayApplications }}</div>
-              <div class="stat-label">今日申请</div>
+              <div class="stat-label">{{ todayApplicationsLabel }}</div>
             </div>
           </div>
         </el-card>
@@ -56,7 +56,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ pendingApplications }}</div>
-              <div class="stat-label">待审批</div>
+              <div class="stat-label">{{ pendingApplicationsLabel }}</div>
             </div>
           </div>
         </el-card>
@@ -86,15 +86,15 @@
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row :gutter="20" style="margin-top: 20px">
+    <el-row v-if="canViewTrends" :gutter="20" style="margin-top: 20px">
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-        <el-card :body-style="{ padding: canViewTrends ? '0' : '20px' }" v-loading="trendLoading && canViewTrends">
+        <el-card :body-style="{ padding: '0' }" v-loading="trendLoading">
           <template #header>
             <div class="card-header">
               <span>周度场地使用趋势</span>
             </div>
           </template>
-          <div v-if="canViewTrends">
+          <div>
             <div
               v-if="trendData.venueUsage.length"
               ref="venueChartRef"
@@ -102,17 +102,16 @@
             ></div>
             <el-empty v-else description="暂无数据" />
           </div>
-          <el-empty v-else description="仅管理员可查看趋势数据" />
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12" class="chart-col-mobile">
-        <el-card :body-style="{ padding: canViewTrends ? '0' : '20px' }" v-loading="trendLoading && canViewTrends">
+        <el-card :body-style="{ padding: '0' }" v-loading="trendLoading">
           <template #header>
             <div class="card-header">
               <span>周度物资借用统计</span>
             </div>
           </template>
-          <div v-if="canViewTrends">
+          <div>
             <div
               v-if="trendData.materialUsage.length"
               ref="materialChartRef"
@@ -120,21 +119,20 @@
             ></div>
             <el-empty v-else description="暂无数据" />
           </div>
-          <el-empty v-else description="仅管理员可查看趋势数据" />
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 申请状态统计 -->
-    <el-row :gutter="20" style="margin-top: 20px">
+    <el-row v-if="canViewTrends" :gutter="20" style="margin-top: 20px">
       <el-col :span="24">
-        <el-card :body-style="{ padding: canViewTrends ? '0' : '20px' }" v-loading="trendLoading && canViewTrends">
+        <el-card :body-style="{ padding: '0' }" v-loading="trendLoading">
           <template #header>
             <div class="card-header">
               <span>审批状态趋势</span>
             </div>
           </template>
-          <div v-if="canViewTrends">
+          <div>
             <div
               v-if="trendData.applicationTrends.length"
               ref="statusChartRef"
@@ -142,7 +140,6 @@
             ></div>
             <el-empty v-else description="暂无数据" />
           </div>
-          <el-empty v-else description="仅管理员可查看趋势数据" />
         </el-card>
       </el-col>
     </el-row>
@@ -177,6 +174,22 @@ let materialChart = null
 let statusChart = null
 
 const canViewTrends = computed(() => userStore.userInfo.role === 'admin')
+
+// 动态定义“今日申请”卡片的文字
+const todayApplicationsLabel = computed(() => {
+  const role = userStore.userInfo.role
+  if (role === 'admin') return '今日申请'
+  if (role === 'reviewer') return '今日新增申请'
+  return '我的今日申请'
+})
+
+// 动态定义“待审批”卡片的文字
+const pendingApplicationsLabel = computed(() => {
+  const role = userStore.userInfo.role
+  if (role === 'admin') return '全站待审批'
+  if (role === 'reviewer') return '待我审批'
+  return '我的待审批'
+})
 
 const totalVenues = computed(() => stats.value?.totalVenues ?? 0)
 const totalMaterials = computed(() => stats.value?.totalMaterials ?? 0)
@@ -382,7 +395,6 @@ const getRoleText = () => {
     admin: '系统管理员',
     reviewer: '导员',
     teacher: '老师',
-    student: '学生',
     user: '普通用户'
   }
   return roleMap[userStore.userInfo.role] || '未知角色'
@@ -393,7 +405,6 @@ const getRoleTagType = () => {
     admin: 'danger',
     reviewer: 'warning',
     teacher: 'primary',
-    student: 'success',
     user: 'info'
   }
   return typeMap[userStore.userInfo.role] || 'info'

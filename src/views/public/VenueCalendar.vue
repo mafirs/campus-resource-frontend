@@ -96,6 +96,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { getVenues, getVenueBookings } from '@/api/venues'
+import { formatShanghaiDateKey, formatShanghaiDateTime } from '@/utils/datetime'
 
 const selectedVenueId = ref(null)
 const calendarValue = ref(new Date())
@@ -176,10 +177,10 @@ const fetchBookings = async () => {
 }
 
 const getEventsForDay = (day) => {
-  const dayStr = new Date(day).toISOString().split('T')[0]
   return events.value.filter((event) => {
-    const eventStart = new Date(event.startTime).toISOString().split('T')[0]
-    return eventStart === dayStr
+    if (!event.startTime) return false
+    const eventDate = formatShanghaiDateKey(event.startTime)
+    return eventDate === day
   })
 }
 
@@ -194,14 +195,7 @@ const getVenueName = (venueId) => {
   return venue ? venue.name : '未知场地'
 }
 
-const formatDateTime = (value) => {
-  if (!value) return '-'
-  try {
-    return new Date(value).toLocaleString()
-  } catch {
-    return value
-  }
-}
+const formatDateTime = formatShanghaiDateTime
 
 const showEventDetail = (event) => {
   selectedEvent.value = {

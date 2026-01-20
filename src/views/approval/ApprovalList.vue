@@ -24,10 +24,10 @@
                   {{ row.venueName }} / {{ row.venueLocation }}
                 </el-descriptions-item>
                 <el-descriptions-item label="开始时间">
-                  {{ new Date(row.startTime).toLocaleString() }}
+                  {{ formatShanghaiDateTime(row.startTime) }}
                 </el-descriptions-item>
                 <el-descriptions-item label="结束时间">
-                  {{ new Date(row.endTime).toLocaleString() }}
+                  {{ formatShanghaiDateTime(row.endTime) }}
                 </el-descriptions-item>
                 <el-descriptions-item label="借用物资" :span="2">
                   <div v-if="row.materials?.length" class="materials-list">
@@ -63,7 +63,7 @@
         <el-table-column prop="venueName" label="场地名称" min-width="150" />
         <el-table-column label="申请时间" width="180">
           <template #default="{ row }">
-            {{ new Date(row.createdAt).toLocaleString() }}
+            {{ formatShanghaiDateTime(row.createdAt) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -111,6 +111,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPendingApprovals, approveApplication, rejectApplication } from '@/api/approvals'
+import { formatShanghaiDateTime } from '@/utils/datetime'
 
 const loading = ref(false)
 const pendingApplications = ref([])

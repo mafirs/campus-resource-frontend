@@ -57,8 +57,9 @@
             <el-option
               v-for="venue in availableVenues"
               :key="venue.id"
-              :label="`${venue.name} (${venue.location}, 容量${venue.capacity})`"
+              :label="`${venue.name} (${venue.location})${venue.isOccupied ? ' [该时段已被预约]' : ''}`"
               :value="venue.id"
+              :disabled="venue.isOccupied"
             />
           </el-select>
         </el-form-item>
@@ -73,6 +74,10 @@
             format="YYYY-MM-DD HH:mm"
             style="width: 100%"
           />
+          <div v-if="isVenueOccupied" style="color: #f56c6c; font-size: 14px; margin-top: 8px; display: flex; align-items: center; gap: 4px;">
+            <el-icon><Warning /></el-icon>
+            该时间段的场地已被预约，请重新选择时间或更换场地！
+          </div>
         </el-form-item>
 
         <!-- 物资借用 -->
@@ -144,7 +149,7 @@
 
         <!-- 提交按钮 -->
         <el-form-item>
-          <el-button type="primary" size="large" :loading="submitting" @click="handleSubmit">
+          <el-button type="primary" size="large" :loading="submitting" :disabled="isVenueOccupied" @click="handleSubmit">
             提交申请
           </el-button>
           <el-button size="large" @click="handleReset">
@@ -160,10 +165,11 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { InfoFilled, OfficeBuilding, Box, Plus, Delete } from '@element-plus/icons-vue'
+import { InfoFilled, OfficeBuilding, Box, Plus, Delete, Warning } from '@element-plus/icons-vue'
 import { getMaterials } from '@/api/materials'
 import { getVenues, getAvailableVenues } from '@/api/venues'
 import { createApplication } from '@/api/applications'
+import { toShanghaiIsoString } from '@/utils/datetime'
 
 const router = useRouter()
 const formRef = ref(null)
@@ -172,6 +178,8 @@ const venueOptions = ref([])
 const loadingMaterials = ref(false)
 const loadingVenues = ref(false)
 const submitting = ref(false)
+const availableVenueIds = ref([])
+const hasCheckedAvailability = ref(false)
 
 const formModel = reactive({
   activityName: '',
@@ -198,7 +206,17 @@ const formRules = {
   ]
 }
 
-const availableVenues = computed(() => venueOptions.value)
+const availableVenues = computed(() => {
+  return venueOptions.value.map(v => ({
+    ...v,
+    isOccupied: formModel.timeRange?.length === 2 && hasCheckedAvailability.value && !availableVenueIds.value.includes(v.id)
+  }))
+})
+
+const isVenueOccupied = computed(() => {
+  if (!formModel.venueId || !hasCheckedAvailability.value || formModel.timeRange?.length !== 2) return false
+  return !availableVenueIds.value.includes(formModel.venueId)
+})
 
 const normalizeList = (result) => {
   if (Array.isArray(result?.list)) return result.list
@@ -245,13 +263,12 @@ const fetchAvailableVenues = async () => {
   loadingVenues.value = true
   try {
     const data = await getAvailableVenues({
-      startTime: new Date(start).toISOString(),
-      endTime: new Date(end).toISOString()
+      startTime: toShanghaiIsoString(start),
+      endTime: toShanghaiIsoString(end)
     })
-    venueOptions.value = normalizeList(data)
-    if (!venueOptions.value.some(v => v.id === formModel.venueId)) {
-      formModel.venueId = null
-    }
+    const list = normalizeList(data)
+    availableVenueIds.value = list.map(v => v.id)
+    hasCheckedAvailability.value = true
   } catch (error) {
     ElMessage.error('查询可用场地失败')
   } finally {
@@ -275,6 +292,8 @@ const handleReset = () => {
     formRef.value.resetFields()
   }
   formModel.materials = []
+  availableVenueIds.value = []
+  hasCheckedAvailability.value = false
   fetchDefaultVenues()
 }
 
@@ -284,10 +303,10 @@ const handleSubmit = async () => {
   const valid = await formRef.value.validate()
   if (!valid) return
 
-  if (formModel.materials.length === 0) {
-    ElMessage.error('请至少申请一个物资')
-    return
-  }
+  // if (formModel.materials.length === 0) {
+  //   ElMessage.error('请至少申请一个物资')
+  //   return
+  // }
 
   const invalidMaterial = formModel.materials.find(
     item => !item.materialId || !item.quantity || item.quantity <= 0
@@ -303,8 +322,8 @@ const handleSubmit = async () => {
       activityName: formModel.activityName,
       activityDescription: formModel.activityDescription,
       venueId: formModel.venueId,
-      startTime: new Date(formModel.timeRange[0]).toISOString(),
-      endTime: new Date(formModel.timeRange[1]).toISOString(),
+      startTime: toShanghaiIsoString(formModel.timeRange[0]),
+      endTime: toShanghaiIsoString(formModel.timeRange[1]),
       materials: formModel.materials.map(item => ({
         materialId: item.materialId,
         quantity: item.quantity
