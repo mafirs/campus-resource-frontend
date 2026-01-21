@@ -68,7 +68,7 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>我的申请概况</span>
+              <span>{{ overviewTitle }}</span>
             </div>
           </template>
           <div class="my-app-stats">
@@ -78,7 +78,7 @@
               :type="item.type"
               effect="dark"
             >
-              {{ item.label }}：{{ myApplicationStats[item.key] ?? 0 }}
+              {{ item.label }}：{{ overviewStats[item.key] ?? 0 }}
             </el-tag>
           </div>
         </el-card>
@@ -91,12 +91,12 @@
         <el-card :body-style="{ padding: '0' }" v-loading="trendLoading">
           <template #header>
             <div class="card-header">
-              <span>周度场地使用趋势</span>
+              <span>热门场地 Top 5</span>
             </div>
           </template>
           <div>
             <div
-              v-if="trendData.venueUsage.length"
+              v-if="topData.topVenues.length"
               ref="venueChartRef"
               style="width: 100%; height: 400px"
             ></div>
@@ -108,12 +108,12 @@
         <el-card :body-style="{ padding: '0' }" v-loading="trendLoading">
           <template #header>
             <div class="card-header">
-              <span>周度物资借用统计</span>
+              <span>热门物资 Top 5</span>
             </div>
           </template>
           <div>
             <div
-              v-if="trendData.materialUsage.length"
+              v-if="topData.topMaterials.length"
               ref="materialChartRef"
               style="width: 100%; height: 400px"
             ></div>
@@ -149,7 +149,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useUserStore } from '@/store/user'
-import { getDashboardStats, getDashboardTrends } from '@/api/dashboard'
+import { getDashboardStats, getDashboardTrends, getDashboardTop } from '@/api/dashboard'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { OfficeBuilding, Box, Document, Clock } from '@element-plus/icons-vue'
@@ -163,6 +163,12 @@ const trendData = ref({
   venueUsage: [],
   materialUsage: [],
   applicationTrends: []
+})
+
+// Top 5 数据（热门场地 / 热门物资）
+const topData = ref({
+  topVenues: [],
+  topMaterials: []
 })
 
 const venueChartRef = ref(null)
@@ -204,6 +210,20 @@ const myApplicationStats = computed(() => stats.value?.myApplications ?? {
   cancelled: 0
 })
 
+// 系统级申请统计：仅 admin 后端会返回；其他角色为 null
+const systemApplicationStats = computed(() => stats.value?.systemApplications ?? {
+  total: 0,
+  pending_reviewer: 0,
+  pending_admin: 0,
+  approved: 0,
+  rejected: 0,
+  cancelled: 0
+})
+
+// 概况区：admin 看系统概况，其它角色看我的概况
+const overviewTitle = computed(() => (canViewTrends.value ? '系统申请概况' : '我的申请概况'))
+const overviewStats = computed(() => (canViewTrends.value ? systemApplicationStats.value : myApplicationStats.value))
+
 const statusLabelMap = {
   pending_reviewer: '待导员审批',
   pending_admin: '待管理员审批',
@@ -235,16 +255,25 @@ const fetchTrends = async () => {
   disposeCharts()
   if (!canViewTrends.value) {
     trendData.value = { venueUsage: [], materialUsage: [], applicationTrends: [] }
+    topData.value = { topVenues: [], topMaterials: [] }
     return
   }
 
   trendLoading.value = true
   try {
+    // 1) weekly：保留给“审批状态趋势”
     const data = await getDashboardTrends({ type: 'weekly' })
     trendData.value = {
       venueUsage: data?.venueUsage || [],
       materialUsage: data?.materialUsage || [],
       applicationTrends: data?.applicationTrends || []
+    }
+
+    // 2) top：给“热门场地/热门物资 Top5”
+    const top = await getDashboardTop()
+    topData.value = {
+      topVenues: top?.topVenues || [],
+      topMaterials: top?.topMaterials || []
     }
     await nextTick()
     renderCharts()
@@ -266,31 +295,32 @@ const initVenueChart = () => {
   if (venueChart) venueChart.dispose()
   
   venueChart = echarts.init(venueChartRef.value)
-  
-  const dates = trendData.value.venueUsage.map(item => item.date)
-  const counts = trendData.value.venueUsage.map(item => item.count)
+
+  const names = topData.value.topVenues.map((i) => i.name)
+  const counts = topData.value.topVenues.map((i) => i.count)
 
   venueChart.setOption({
+    grid: { left: 120, right: 24, top: 24, bottom: 24 },
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
     },
     xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: dates
+      type: 'value',
+      name: '预约次数'
     },
     yAxis: {
-      type: 'value',
-      name: '使用次数'
+      type: 'category',
+      inverse: true,
+      data: names
     },
     series: [
       {
-        name: '场地使用',
-        type: 'line',
-        smooth: true,
-        areaStyle: {},
+        name: '预约次数',
+        type: 'bar',
         data: counts,
-        color: '#409eff'
+        itemStyle: { color: '#409eff' },
+        barMaxWidth: 26
       }
     ]
   })
@@ -301,33 +331,32 @@ const initMaterialChart = () => {
   if (materialChart) materialChart.dispose()
   
   materialChart = echarts.init(materialChartRef.value)
-  
-  const dates = trendData.value.materialUsage.map(item => item.date)
-  const counts = trendData.value.materialUsage.map(item => item.count)
+
+  const names = topData.value.topMaterials.map((i) => i.name)
+  const counts = topData.value.topMaterials.map((i) => i.count)
 
   materialChart.setOption({
+    grid: { left: 120, right: 24, top: 24, bottom: 24 },
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
+      axisPointer: { type: 'shadow' }
     },
     xAxis: {
-      type: 'category',
-      data: dates
+      type: 'value',
+      name: '借出件数'
     },
     yAxis: {
-      type: 'value',
-      name: '借用数量'
+      type: 'category',
+      inverse: true,
+      data: names
     },
     series: [
       {
-        name: '物资借用',
+        name: '借出件数',
         type: 'bar',
         data: counts,
-        itemStyle: {
-          color: '#67c23a'
-        }
+        itemStyle: { color: '#67c23a' },
+        barMaxWidth: 26
       }
     ]
   })
