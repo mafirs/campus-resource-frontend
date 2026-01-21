@@ -59,7 +59,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -94,7 +94,18 @@ const handleLogin = async () => {
       password: loginForm.password
     })
         ElMessage.success('登录成功')
-        
+
+        // 默认密码安全提示
+        if (loginForm.password === '123456') {
+          ElNotification({
+            title: '安全提示',
+            message: '您正在使用默认密码登录，建议后续修改密码以确保账户安全。',
+            type: 'warning',
+            duration: 5000,
+            position: 'top-right'
+          })
+        }
+
         const role = userStore.userInfo.role
         if (role === 'admin' || role === 'reviewer') {
       router.push('/dashboard')
