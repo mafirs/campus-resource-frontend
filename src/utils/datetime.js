@@ -60,6 +60,27 @@ export function formatShanghaiDateKey(input) {
   return y && m && da ? `${y}-${m}-${da}` : ''
 }
 
+// 输出 YYYY-MM-DD HH:mm（用于弹窗时间显示，不带秒）
+export function formatShanghaiDateHourMinute(input) {
+  const d = parseShanghaiDate(input)
+  if (!d) return '-'
+  const parts = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: SHANGHAI_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(d)
+  const y = parts.find(p => p.type === 'year')?.value
+  const m = parts.find(p => p.type === 'month')?.value
+  const da = parts.find(p => p.type === 'day')?.value
+  const h = parts.find(p => p.type === 'hour')?.value
+  const mi = parts.find(p => p.type === 'minute')?.value
+  return y && m && da && h && mi ? `${y}-${m}-${da} ${h}:${mi}` : '-'
+}
+
 // 输出上海时区 ISO（秒级，固定 +08:00）
 export function toShanghaiIsoString(dateInput) {
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput)

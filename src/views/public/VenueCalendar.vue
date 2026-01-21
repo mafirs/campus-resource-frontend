@@ -72,7 +72,10 @@
           <el-tag type="primary" size="large">{{ selectedEvent.activityName }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="申请人">
-          {{ selectedEvent.applicantName }}
+          {{ maskName(selectedEvent.applicantName) }}
+          <span v-if="selectedEvent.applicantDepartment" style="color: #909399">
+            ({{ selectedEvent.applicantDepartment }})
+          </span>
         </el-descriptions-item>
         <el-descriptions-item label="场地">
           {{ selectedEvent.venueName }}
@@ -86,6 +89,9 @@
         <el-descriptions-item label="状态">
           <el-tag type="success">已通过</el-tag>
         </el-descriptions-item>
+        <el-descriptions-item label="借用物资" :span="2">
+          {{ formatMaterials(selectedEvent.materials) }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -96,7 +102,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { getVenues, getVenueBookings } from '@/api/venues'
-import { formatShanghaiDateKey, formatShanghaiDateTime } from '@/utils/datetime'
+import { formatShanghaiDateKey, formatShanghaiDateTime, formatShanghaiDateHourMinute } from '@/utils/datetime'
 
 const selectedVenueId = ref(null)
 const calendarValue = ref(new Date())
@@ -195,7 +201,27 @@ const getVenueName = (venueId) => {
   return venue ? venue.name : '未知场地'
 }
 
-const formatDateTime = formatShanghaiDateTime
+const formatDateTime = formatShanghaiDateHourMinute
+
+// 姓名脱敏：李同学 -> 李**
+const maskName = (name) => {
+  if (!name || name.length < 2) return name || '-'
+  return name[0] + '**'
+}
+
+// 学号脱敏：2202160603022 -> 220...022
+const maskStudentId = (studentId) => {
+  if (!studentId || studentId.length < 4) return studentId || '-'
+  const start = studentId.slice(0, 3)
+  const end = studentId.slice(-3)
+  return `${start}...${end}`
+}
+
+// 格式化物资列表：[{name: '无线麦克风', quantity: 2}, ...] -> "无线麦克风x2"
+const formatMaterials = (materials) => {
+  if (!materials || materials.length === 0) return '无'
+  return materials.map(m => `${m.name}x${m.quantity}`).join(', ')
+}
 
 const showEventDetail = (event) => {
   selectedEvent.value = {

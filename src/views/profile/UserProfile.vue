@@ -23,6 +23,12 @@
             <el-descriptions-item label="姓名">
               {{ userInfo.realName || '未设置' }}
             </el-descriptions-item>
+            <el-descriptions-item label="学号/工号">
+              {{ userInfo.studentId || '未设置' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="所属院系">
+              {{ userInfo.department || '未设置' }}
+            </el-descriptions-item>
             <el-descriptions-item label="角色">
               <el-tag :type="getRoleTagType()">
                 {{ getRoleText() }}
