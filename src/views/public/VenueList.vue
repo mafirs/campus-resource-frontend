@@ -32,7 +32,6 @@
         style="margin-bottom: 16px"
       >
         <p>“占用中”根据当前时间是否落在预约区间内计算（实时状态查询）。</p>
-        <p>“未来 7 天时间轴”来自后端接口：<code>/api/venues/:id/bookings?days=7</code>。</p>
       </el-alert>
 
       <el-table

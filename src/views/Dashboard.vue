@@ -2,7 +2,7 @@
   <div class="dashboard page">
     <el-card class="welcome-card">
       <div class="welcome-content">
-        <h2>欢迎，{{ userStore.userInfo.username }}！</h2>
+        <h2>欢迎，{{ userStore.userInfo.realName }}！</h2>
         <p>当前角色：<el-tag :type="getRoleTagType()">{{ getRoleText() }}</el-tag></p>
       </div>
     </el-card>
