@@ -59,7 +59,7 @@
                 >
                   <div class="booking-title">{{ b.activityName || b.title || '（未命名活动）' }}</div>
                   <div class="booking-meta">
-                    <span>申请人：{{ b.applicantName || '-' }}</span>
+                    <span>申请人：{{ maskName(b.applicantName) }}<template v-if="b.applicantDepartment">（{{ b.applicantDepartment }}）</template></span>
                   </div>
                 </el-timeline-item>
               </el-timeline>
@@ -143,6 +143,12 @@ const formatDateRange = (start, end) => {
   const s = formatDateTime(start)
   const e = formatDateTime(end)
   return `${s} - ${e}`
+}
+
+// 姓名脱敏：马小明 -> 马**
+const maskName = (name) => {
+  if (!name || name.length < 2) return name || '-'
+  return name[0] + '**'
 }
 
 const fetchVenues = async () => {
