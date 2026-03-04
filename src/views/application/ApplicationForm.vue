@@ -196,7 +196,7 @@ const formRules = {
   ],
   activityDescription: [
     { required: true, message: '请输入活动描述', trigger: 'blur' },
-    { min: 10, max: 500, message: '长度在 10 到 500 个字符', trigger: 'blur' }
+    { min: 1, max: 500, message: '长度在 1 到 500 个字符', trigger: 'blur' }
   ],
   venueId: [
     { required: true, message: '请选择场地', trigger: 'change' }
