@@ -4,8 +4,7 @@
       <template #header>
         <div class="card-header">
           <div class="header-left">
-            <span>用户管理（只读）</span>
-            <el-tag type="info" style="margin-left: 10px">教务中心同步 · 本页仅展示</el-tag>
+            <span>用户管理</span>
           </div>
 
           <div class="header-actions">

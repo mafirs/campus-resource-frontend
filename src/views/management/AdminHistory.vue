@@ -5,7 +5,6 @@
         <div class="card-header">
           <div class="header-left">
             <span>操作日志</span>
-            <el-tag type="info" style="margin-left: 10px">仅管理员可见</el-tag>
           </div>
 
           <div class="header-actions">
