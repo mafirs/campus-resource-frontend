@@ -59,6 +59,7 @@ const iconMap = {
   '首页': HomeFilled,
   '发起申请': DocumentAdd,
   '待我审批': Document,
+  '操作日志': Document,
   '场地日历': OfficeBuilding,
   '场地列表': OfficeBuilding,
   '场地管理': OfficeBuilding,

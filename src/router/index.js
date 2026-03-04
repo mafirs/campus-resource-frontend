@@ -121,6 +121,15 @@ const routes = [
         }
       },
       {
+        path: 'manage/history',
+        name: 'AdminHistory',
+        component: () => import('../views/management/AdminHistory.vue'),
+        meta: {
+          title: '操作日志',
+          roles: ['admin']
+        }
+      },
+      {
         path: 'profile',
         name: 'UserProfile',
         component: () => import('../views/profile/UserProfile.vue'),
