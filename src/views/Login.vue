@@ -43,14 +43,6 @@
           </el-button>
         </el-form-item>
       </el-form>
-      
-      <div class="login-tips">
-        <el-divider>测试账号</el-divider>
-        <p>管理员: admin / 123456</p>
-        <p>导员: reviewer / 123456</p>
-        <p>老师: teacher / 123456</p>
-        <p>学生账号student / 123456</p>
-      </div>
     </el-card>
   </div>
 </template>
@@ -147,17 +139,6 @@ const handleLogin = async () => {
   line-height: 1.4;
 }
 
-.login-tips {
-  margin-top: 20px;
-  text-align: center;
-  color: #909399;
-  font-size: 14px;
-}
-
-.login-tips p {
-  margin: 8px 0;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .login-container {
@@ -171,19 +152,11 @@ const handleLogin = async () => {
   .card-header h2 {
     font-size: 20px;
   }
-  
-  .login-tips {
-    font-size: 12px;
-  }
 }
 
 @media (max-width: 480px) {
   .card-header h2 {
     font-size: 18px;
-  }
-  
-  .login-tips p {
-    font-size: 11px;
   }
 }
 </style>

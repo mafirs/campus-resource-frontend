@@ -38,7 +38,7 @@
                           <el-tag size="small">{{ material.requestedQuantity }}</el-tag>
                         </template>
                       </el-table-column>
-                      <el-table-column label="库存状态" width="180">
+                      <el-table-column label="申请可满足性" width="180">
                         <template #default="{ row: material }">
                           <el-tag
                             :type="getStockStatusType(material)"
@@ -122,9 +122,9 @@ const pagination = reactive({
 })
 
 const stockStatusMap = {
-  sufficient: { type: 'success', text: '库存充足' },
-  low: { type: 'warning', text: '库存紧张' },
-  insufficient: { type: 'danger', text: '库存不足' }
+  sufficient: { type: 'success', text: '可满足' },
+  low: { type: 'warning', text: '可用不足' },
+  insufficient: { type: 'danger', text: '无可用' }
 }
 
 const fetchApprovals = async () => {
@@ -146,7 +146,8 @@ const fetchApprovals = async () => {
 const getStockStatus = (material) => {
   const status = stockStatusMap[material.stockStatus] || { type: 'info', text: '未知' }
   const available = material.availableQuantity ?? '-'
-  return `${status.text}（可用${available}）`
+  const requested = material.requestedQuantity ?? '-'
+  return `${status.text}（可用${available} / 申请${requested}）`
 }
 
 const getStockStatusType = (material) => {
