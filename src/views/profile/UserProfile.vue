@@ -134,6 +134,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
+import { changePassword } from '@/api/auth'
 
 const userStore = useUserStore()
 const passwordFormRef = ref(null)
@@ -206,13 +207,22 @@ const getRoleTagType = () => {
 const handleChangePassword = async () => {
   if (!passwordFormRef.value) return
 
-  await passwordFormRef.value.validate((valid) => {
-    if (valid) {
-      // Mock 环境：不真实验证原密码，只检查新密码一致性
-      ElMessage.success('密码修改成功！（演示环境未接入后端接口）')
-      handleResetForm()
-    }
-  })
+  try {
+    await passwordFormRef.value.validate()
+  } catch {
+    return
+  }
+
+  try {
+    await changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    })
+    ElMessage.success('密码修改成功')
+    handleResetForm()
+  } catch (error) {
+    // 错误提示由请求拦截器统一处理，避免重复弹窗
+  }
 }
 
 // 重置表单

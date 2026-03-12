@@ -6,3 +6,4 @@ export const logout = () => request.post('auth/logout')
 
 export const getProfile = () => request.get('auth/profile')
 
+export const changePassword = (payload) => request.put('auth/change-password', payload)
