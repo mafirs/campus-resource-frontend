@@ -46,12 +46,115 @@
       </template>
 
       <el-table :data="rows" stripe border style="width: 100%" v-loading="loading">
-        <el-table-column prop="id" label="ID" width="90" />
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div class="expand-content">
+              <el-descriptions :column="2" border>
+                <el-descriptions-item label="活动名称" :span="2">
+                  <el-tag type="primary" size="large">
+                    {{ normalizeText(row.activityName) || '-' }}
+                  </el-tag>
+                </el-descriptions-item>
+
+                <el-descriptions-item label="日志ID">
+                  {{ row.id ?? '-' }}
+                </el-descriptions-item>
+                <el-descriptions-item label="申请ID">
+                  {{ row.applicationId ?? '-' }}
+                </el-descriptions-item>
+
+                <el-descriptions-item label="申请人">
+                  {{ getApplicantDisplay(row) }}
+                </el-descriptions-item>
+                <el-descriptions-item label="学号/工号">
+                  {{ normalizeText(row.applicantStudentId) || '-' }}
+                </el-descriptions-item>
+
+                <el-descriptions-item label="院系/部门">
+                  {{ normalizeText(row.applicantDepartment) || '-' }}
+                </el-descriptions-item>
+                <el-descriptions-item label="场地容量">
+                  {{ getVenueCapacityText(row) }}
+                </el-descriptions-item>
+
+                <el-descriptions-item label="场地" :span="2">
+                  {{ getVenueDisplay(row) }}
+                </el-descriptions-item>
+
+                <el-descriptions-item label="申请时间">
+                  {{ formatShanghaiDateTime(row.submittedAt) }}
+                </el-descriptions-item>
+                <el-descriptions-item label="操作时间">
+                  {{ formatShanghaiDateTime(row.createdAt) }}
+                </el-descriptions-item>
+
+                <el-descriptions-item label="开始时间">
+                  {{ formatShanghaiDateTime(row.startTime) }}
+                </el-descriptions-item>
+                <el-descriptions-item label="结束时间">
+                  {{ formatShanghaiDateTime(row.endTime) }}
+                </el-descriptions-item>
+
+                <el-descriptions-item label="活动描述" :span="2">
+                  <span>{{ normalizeText(row.activityDescription) || '无' }}</span>
+                </el-descriptions-item>
+
+                <el-descriptions-item label="借用物资" :span="2">
+                  <div v-if="hasMaterials(row)" class="materials-list">
+                    <el-table :data="row.materials" size="small" border>
+                      <el-table-column prop="materialName" label="物资名称" min-width="180" />
+                      <el-table-column prop="requestedQuantity" label="借用数量" width="120">
+                        <template #default="{ row: material }">
+                          <el-tag size="small">{{ material.requestedQuantity }}</el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="unit" label="单位" width="100" />
+                    </el-table>
+                  </div>
+                  <span v-else class="muted-text">无</span>
+                </el-descriptions-item>
+
+                <el-descriptions-item label="驳回理由" :span="2">
+                  <span v-if="row.action === 'reject'">{{ getReasonText(row) }}</span>
+                  <span v-else class="muted-text">无</span>
+                </el-descriptions-item>
+              </el-descriptions>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="applicationId" label="申请ID" width="100" />
+
+        <el-table-column prop="activityName" label="活动名称" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ normalizeText(row.activityName) || '-' }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="申请人" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ getApplicantDisplay(row) }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="场地名称" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ normalizeText(row.venueName) || '-' }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="申请时间" min-width="180">
+          <template #default="{ row }">
+            {{ formatShanghaiDateTime(row.submittedAt) }}
+          </template>
+        </el-table-column>
+
         <el-table-column label="操作时间" min-width="180">
           <template #default="{ row }">
             {{ formatShanghaiDateTime(row.createdAt) }}
           </template>
         </el-table-column>
+
         <el-table-column label="操作" width="110">
           <template #default="{ row }">
             <el-tag :type="getActionTagType(row.action)">
@@ -59,11 +162,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="applicationId" label="申请ID" width="110" />
-        <el-table-column label="驳回理由" min-width="260" show-overflow-tooltip>
+
+        <el-table-column label="驳回理由" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
-            <span v-if="row.action === 'reject'">{{ row.rejectionReason }}</span>
-            <span v-else style="color: #909399">{{ row.rejectionReason || '' }}</span>
+            <span v-if="row.action === 'reject'">{{ getReasonText(row) }}</span>
+            <span v-else class="muted-text">-</span>
           </template>
         </el-table-column>
       </el-table>
@@ -116,6 +219,41 @@ const getActionTagType = (action) => {
   if (action === 'approve') return 'success'
   if (action === 'reject') return 'danger'
   return 'info'
+}
+
+const normalizeText = (value) => {
+  if (value == null) return ''
+  return String(value).trim()
+}
+
+const getApplicantDisplay = (row) => {
+  const name = normalizeText(row?.applicantName)
+  const username = normalizeText(row?.applicantUsername)
+
+  if (name && username) return `${name}（${username}）`
+  return name || username || '-'
+}
+
+const getVenueDisplay = (row) => {
+  const venueName = normalizeText(row?.venueName)
+  const venueLocation = normalizeText(row?.venueLocation)
+
+  if (venueName && venueLocation) return `${venueName} / ${venueLocation}`
+  return venueName || venueLocation || '-'
+}
+
+const getVenueCapacityText = (row) => {
+  const capacity = Number(row?.venueCapacity)
+  return Number.isFinite(capacity) && capacity > 0 ? `${capacity} 人` : '-'
+}
+
+const getReasonText = (row) => {
+  const reason = normalizeText(row?.rejectionReason)
+  return reason || '无'
+}
+
+const hasMaterials = (row) => {
+  return Array.isArray(row?.materials) && row.materials.length > 0
 }
 
 const buildParams = () => {
@@ -212,10 +350,26 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+.expand-content {
+  padding: 20px;
+  background-color: #f5f7fa;
+}
+
+.materials-list {
+  margin-top: 10px;
+}
+
+.muted-text {
+  color: #909399;
+}
+
+:deep(.el-descriptions__label) {
+  font-weight: 600;
+}
+
 .table-pagination {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
 </style>
-
